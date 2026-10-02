@@ -119,7 +119,7 @@ Puffer: <input id="buffer" type="number" value="30" min="0" max="500"> Meter<br>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const map=L.map('map').setView([51.5136,7.4653],12);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap-Mitwirkende'}).addTo(map);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap-Mitwirkende'}).addTo(map);
 let routes=[];let selectedRoute=null;let drawing=false;let points=[];let routeLine=null;
 function status(text){document.getElementById('status').innerText=text;}
 async function loadRoutes(){const response=await fetch('/api/routes');routes=await response.json();renderRoutes();}
