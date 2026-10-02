@@ -3,7 +3,6 @@ from datetime import UTC, date, datetime
 from custom_components.comuro import tracker as tracker_module
 from custom_components.comuro.models import ConstructionSite
 
-
 NOW = datetime(
     2026,
     10,
