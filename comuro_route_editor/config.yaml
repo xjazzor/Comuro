@@ -1,7 +1,7 @@
 name: Comuro Route Editor
 slug: comuro_route_editor
 description: "Interactive route editor for Comuro"
-version: "0.1.4"
+version: "0.1.5"
 url: "https://github.com/xjazzor/Comuro"
 arch:
   - amd64
