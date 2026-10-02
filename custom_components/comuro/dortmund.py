@@ -8,6 +8,7 @@ from datetime import date
 from typing import Any
 
 import requests
+
 from .models import ConstructionSite
 
 CURRENT_URL = (
