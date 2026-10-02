@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+
+    from .runtime import ComuroRuntimeData
 
 from .const import DOMAIN
-from .coordinator import ComuroCoordinator
-from .runtime import ComuroRuntimeData
 
 PLATFORMS: tuple[str, ...] = (
     "binary_sensor",
@@ -20,9 +23,12 @@ async def async_setup_entry(
     entry: ConfigEntry[ComuroRuntimeData],
 ) -> bool:
     """Set up Comuro from a config entry."""
+    from .coordinator import ComuroCoordinator
+    from .runtime import ComuroRuntimeData
+
     coordinator = ComuroCoordinator(hass)
 
-    # Fail setup when the Dortmund data source is not reachable.
+    # Fail setup when Dortmund is unreachable.
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = ComuroRuntimeData(
@@ -46,3 +52,6 @@ async def async_unload_entry(
         entry,
         PLATFORMS,
     )
+
+
+__all__ = ["DOMAIN", "PLATFORMS"]
