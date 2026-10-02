@@ -2,12 +2,12 @@ from datetime import UTC, date, datetime
 
 from custom_components.comuro.models import ConstructionSite
 from custom_components.comuro.tracker import (
+    ConstructionTracker,
     EXTENDED,
     NEW,
     RESOLVED,
     STATUS_CHANGED,
     UPDATED,
-    ConstructionTracker,
 )
 
 
