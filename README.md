@@ -4,6 +4,32 @@ Comuro is a Home Assistant project for monitoring saved routes and detecting cur
 
 The first data source is the official Open Data service of the City of Dortmund. The long-term goal is a clean separation between the Home Assistant integration (data, tracking, matching and entities) and a separate Home Assistant app/add-on for creating and managing routes.
 
+## Install with HACS
+
+Comuro is packaged as a Home Assistant **integration** and can be installed through HACS as a custom repository during development.
+
+> **Important:** HACS requires repositories to be public on GitHub. The Comuro repository is currently private, so make it public before trying the HACS installation.
+
+### Custom repository
+
+In Home Assistant:
+
+1. Open **HACS**.
+2. Open the **⋮** menu in the top-right corner.
+3. Select **Custom repositories**.
+4. Add `https://github.com/xjazzor/Comuro`.
+5. Select **Integration**.
+6. Add the repository.
+7. Search for **Comuro** in HACS and install it.
+8. Restart Home Assistant.
+9. Go to **Settings → Devices & services → Add Integration** and select **Comuro**.
+
+For a convenient one-click link:
+
+https://my.home-assistant.io/redirect/hacs_repository/?owner=xjazzor&repository=Comuro&category=integration
+
+HACS uses `hacs.json` for repository metadata, while the integration itself is discovered from `custom_components/comuro/manifest.json`.
+
 ## Architecture
 
 ```text
@@ -71,17 +97,15 @@ Comuro/
 │       ├── binary_sensor.py
 │       ├── strings.json
 │       └── translations/
+├── comuro_route_editor/
+├── contracts/
 ├── tests/
-│   ├── test_dortmund.py
-│   ├── test_geo.py
-│   ├── test_models.py
-│   └── test_tracker.py
-├── addon/
-├── docs/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml
+│       ├── ci.yml
+│       └── hacs.yml
 ├── hacs.json
+├── repository.yaml
 ├── requirements-dev.txt
 ├── pyproject.toml
 ├── LICENSE
@@ -109,6 +133,8 @@ Run Ruff:
 ```powershell
 ruff check custom_components tests
 ```
+
+The GitHub Actions pipeline validates the Python test suite, Ruff, Home Assistant metadata with Hassfest, and HACS compatibility.
 
 ## Home Assistant integration
 
