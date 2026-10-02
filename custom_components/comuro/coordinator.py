@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -156,9 +155,6 @@ class ComuroCoordinator(
             )
 
             self.async_set_updated_data(evaluated)
-            self.hass.async_create_task(
-                self._async_remove_stale_devices(set(evaluated))
-            )
 
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning(
@@ -207,35 +203,6 @@ class ComuroCoordinator(
                 f"Comuro update failed: {err}"
             ) from err
 
-    async def _async_remove_stale_devices(
-        self,
-        current_route_ids: set[str],
-    ) -> None:
-        """Remove route devices after their entities have been unloaded."""
-        await asyncio.sleep(1)
-
-        from homeassistant.helpers import entity_registry as er
-
-        device_registry = dr.async_get(self.hass)
-        entity_registry = er.async_get(self.hass)
-
-        for device in list(device_registry.async_get_devices()):
-            route_ids = {
-                identifier_id
-                for identifier_domain, identifier_id in device.identifiers
-                if identifier_domain == DOMAIN
-            }
-
-            if not route_ids or route_ids & current_route_ids:
-                continue
-
-            if any(
-                entity.device_id == device.id
-                for entity in entity_registry.entities.values()
-            ):
-                continue
-
-            device_registry.async_remove_device(device.id)
 
     @staticmethod
     def _get_route_file_mtime() -> float | None:
