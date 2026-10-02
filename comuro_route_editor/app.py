@@ -64,6 +64,26 @@ def api_create_route(payload: RoutePayload):
         save_routes(routes)
     return route
 
+@app.put("/api/routes/{route_id}")
+def api_update_route(route_id: str, payload: RoutePayload):
+    route = {
+        "id": route_id,
+        "name": payload.name.strip(),
+        "coordinates": payload.coordinates,
+        "buffer_m": payload.buffer_m,
+        "enabled": payload.enabled,
+    }
+    if not route["name"]:
+        raise HTTPException(400, "Bitte einen Routennamen vergeben.")
+    with LOCK:
+        routes = load_routes()
+        for index, existing in enumerate(routes):
+            if existing.get("id") == route_id:
+                routes[index] = route
+                save_routes(routes)
+                return route
+    raise HTTPException(404, "Route nicht gefunden.")
+
 @app.delete("/api/routes/{route_id}")
 def api_delete_route(route_id: str):
     with LOCK:
@@ -110,13 +130,14 @@ button{cursor:pointer}
 <div class="section"><b>Meine Routen</b><div id="routes">Lade…</div>
 <button onclick="newRoute()">✏️ Neue Route</button></div>
 <div id="editor" class="section" style="display:none">
-<b>Route zeichnen</b><br>
+<b id="editorTitle">Route zeichnen</b><br>
 <input id="routeName" placeholder="z.B. Arbeitsweg" maxlength="100" style="width:240px"><br>
 Puffer: <input id="buffer" type="number" value="30" min="0" max="500"> Meter<br>
-<button onclick="finishRoute()">💾 Speichern</button>
+<label><input id="enabled" type="checkbox" checked> Route aktiv</label><br>
+<button id="saveButton" onclick="finishRoute()">💾 Speichern</button>
 <button onclick="undoPoint()">↩ Punkt zurück</button>
 <button onclick="cancelDrawing()">✖ Abbrechen</button>
-<p class="small">Klicke Punkt für Punkt entlang der gewünschten Strecke.</p>
+<p class="small">Neue Route: Klicke Punkt für Punkt entlang der gewünschten Strecke.<br>Beim Bearbeiten kannst du Name, Puffer, Aktivität und Verlauf ändern.</p>
 </div>
 <div id="status" class="section">Keine Route ausgewählt.</div>
 </div>
@@ -137,18 +158,19 @@ L.control.attribution({
   '<a href="https://openmaptiles.org/">© OpenMapTiles</a> · ' +
   '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap-Mitwirkende</a>'
 ).addTo(map);
-let routes=[];let selectedRoute=null;let drawing=false;let points=[];let routeLine=null;
+let routes=[];let selectedRoute=null;let editingRouteId=null;let drawing=false;let points=[];let routeLine=null;
 function status(text){document.getElementById('status').innerText=text;}
 async function loadRoutes(){const response=await fetch(apiUrl('/api/routes'));routes=await response.json();renderRoutes();}
-function renderRoutes(){const c=document.getElementById('routes');if(!routes.length){c.innerHTML='<i>Noch keine Route gespeichert.</i>';return;}c.innerHTML='';routes.forEach(route=>{const row=document.createElement('div');row.className='route-row'+(selectedRoute&&selectedRoute.id===route.id?' active':'');row.innerHTML='<b>'+escapeHtml(route.name)+'</b> <span class="route-actions"><button onclick="selectRoute(\''+route.id+'\')">Anzeigen</button> <button onclick="deleteRoute(\''+route.id+'\')">🗑</button></span>';c.appendChild(row);});}
-function selectRoute(id){const route=routes.find(r=>r.id===id);if(!route)return;selectedRoute=route;drawing=false;points=route.coordinates.map(p=>[p[1],p[0]]);redrawRoute();renderRoutes();if(routeLine)map.fitBounds(routeLine.getBounds(),{padding:[40,40]});status('Route "'+route.name+'" ausgewählt.');}
-function newRoute(){drawing=true;points=[];selectedRoute=null;if(routeLine){map.removeLayer(routeLine);routeLine=null;}document.getElementById('editor').style.display='block';document.getElementById('routeName').value='';document.getElementById('buffer').value='30';map.getContainer().style.cursor='crosshair';renderRoutes();status('Zeichenmodus aktiv.');}
+function renderRoutes(){const c=document.getElementById('routes');if(!routes.length){c.innerHTML='<i>Noch keine Route gespeichert.</i>';return;}c.innerHTML='';routes.forEach(route=>{const row=document.createElement('div');row.className='route-row'+(selectedRoute&&selectedRoute.id===route.id?' active':'');row.innerHTML='<b>'+escapeHtml(route.name)+'</b> <span class="route-actions"><button onclick="selectRoute(\''+route.id+'\')">Anzeigen</button> <button onclick="editRoute(\''+route.id+'\')">Bearbeiten</button> <button onclick="deleteRoute(\''+route.id+'\')">🗑</button></span>';c.appendChild(row);});}
+function selectRoute(id){const route=routes.find(r=>r.id===id);if(!route)return;selectedRoute=route;editingRouteId=null;drawing=false;points=route.coordinates.map(p=>[p[1],p[0]]);redrawRoute();renderRoutes();if(routeLine)map.fitBounds(routeLine.getBounds(),{padding:[40,40]});status('Route "'+route.name+'" ausgewählt.');}
+function editRoute(id){const route=routes.find(r=>r.id===id);if(!route)return;selectedRoute=route;editingRouteId=id;drawing=true;points=route.coordinates.map(p=>[p[1],p[0]]);redrawRoute();document.getElementById('editor').style.display='block';document.getElementById('editorTitle').innerText='Route bearbeiten';document.getElementById('saveButton').innerText='💾 Änderungen speichern';document.getElementById('routeName').value=route.name;document.getElementById('buffer').value=route.buffer_m;document.getElementById('enabled').checked=route.enabled!==false;map.getContainer().style.cursor='crosshair';renderRoutes();if(routeLine)map.fitBounds(routeLine.getBounds(),{padding:[40,40]});status('Bearbeitung von "'+route.name+'".');}
+function newRoute(){drawing=true;editingRouteId=null;points=[];selectedRoute=null;if(routeLine){map.removeLayer(routeLine);routeLine=null;}document.getElementById('editor').style.display='block';document.getElementById('editorTitle').innerText='Route zeichnen';document.getElementById('saveButton').innerText='💾 Speichern';document.getElementById('routeName').value='';document.getElementById('buffer').value='30';document.getElementById('enabled').checked=true;map.getContainer().style.cursor='crosshair';renderRoutes();status('Zeichenmodus aktiv.');}
 map.on('click',event=>{if(!drawing)return;points.push([event.latlng.lat,event.latlng.lng]);redrawRoute();});
 function redrawRoute(){if(routeLine)map.removeLayer(routeLine);if(points.length>=2)routeLine=L.polyline(points,{color:'#1976d2',weight:6}).addTo(map);}
 function undoPoint(){if(!drawing)return;points.pop();redrawRoute();}
-function cancelDrawing(){drawing=false;points=[];if(routeLine){map.removeLayer(routeLine);routeLine=null;}document.getElementById('editor').style.display='none';map.getContainer().style.cursor='';status('Zeichnen abgebrochen.');}
-async function finishRoute(){if(points.length<2){alert('Bitte mindestens zwei Punkte setzen.');return;}const name=document.getElementById('routeName').value.trim();if(!name){alert('Bitte einen Routennamen vergeben.');return;}const buffer=Number(document.getElementById('buffer').value);const coordinates=points.map(p=>[p[1],p[0]]);const response=await fetch(apiUrl('/api/routes'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,coordinates,buffer_m:buffer,enabled:true})});if(!response.ok){const error=await response.json();alert(error.detail||'Route konnte nicht gespeichert werden.');return;}const route=await response.json();routes.push(route);selectedRoute=route;drawing=false;document.getElementById('editor').style.display='none';map.getContainer().style.cursor='';renderRoutes();status('Route "'+route.name+'" gespeichert.');}
-async function deleteRoute(id){const route=routes.find(r=>r.id===id);if(!route)return;if(!confirm('Route "'+route.name+'" wirklich löschen?'))return;const response=await fetch(apiUrl('/api/routes/'+id),{method:'DELETE'});if(!response.ok){alert('Route konnte nicht gelöscht werden.');return;}routes=routes.filter(r=>r.id!==id);if(selectedRoute&&selectedRoute.id===id){selectedRoute=null;if(routeLine){map.removeLayer(routeLine);routeLine=null;}}renderRoutes();status('Route gelöscht.');}
+function cancelDrawing(){drawing=false;editingRouteId=null;points=[];if(routeLine){map.removeLayer(routeLine);routeLine=null;}document.getElementById('editor').style.display='none';map.getContainer().style.cursor='';status('Bearbeitung abgebrochen.');}
+async function finishRoute(){if(points.length<2){alert('Bitte mindestens zwei Punkte setzen.');return;}const name=document.getElementById('routeName').value.trim();if(!name){alert('Bitte einen Routennamen vergeben.');return;}const buffer=Number(document.getElementById('buffer').value);const enabled=document.getElementById('enabled').checked;const coordinates=points.map(p=>[p[1],p[0]]);const method=editingRouteId?'PUT':'POST';const url=editingRouteId?apiUrl('/api/routes/'+editingRouteId):apiUrl('/api/routes');const response=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify({name,coordinates,buffer_m:buffer,enabled})});if(!response.ok){const error=await response.json();alert(error.detail||'Route konnte nicht gespeichert werden.');return;}const route=await response.json();if(editingRouteId){const index=routes.findIndex(r=>r.id===editingRouteId);if(index>=0)routes[index]=route;}else{routes.push(route);}selectedRoute=route;editingRouteId=null;drawing=false;document.getElementById('editor').style.display='none';map.getContainer().style.cursor='';renderRoutes();status('Route "'+route.name+'" gespeichert.');}
+async function deleteRoute(id){const route=routes.find(r=>r.id===id);if(!route)return;if(!confirm('Route "'+route.name+'" wirklich löschen?'))return;const response=await fetch(apiUrl('/api/routes/'+id),{method:'DELETE'});if(!response.ok){alert('Route konnte nicht gelöscht werden.');return;}routes=routes.filter(r=>r.id!==id);if(selectedRoute&&selectedRoute.id===id){selectedRoute=null;editingRouteId=null;if(routeLine){map.removeLayer(routeLine);routeLine=null;}}renderRoutes();status('Route gelöscht.');}
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]);}
 loadRoutes();
 </script>
