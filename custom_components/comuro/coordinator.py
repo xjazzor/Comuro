@@ -8,6 +8,7 @@ import json
 import logging
 
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
@@ -153,6 +154,7 @@ class ComuroCoordinator(
                 self._sites,
             )
 
+            self._remove_stale_devices(set(evaluated))
             self.async_set_updated_data(evaluated)
 
         except Exception as err:
@@ -190,16 +192,35 @@ class ComuroCoordinator(
                 )
             )
 
-            return await self.hass.async_add_executor_job(
+            evaluated = await self.hass.async_add_executor_job(
                 self._match_routes,
                 routes,
                 sites,
             )
+            self._remove_stale_devices(set(evaluated))
+            return evaluated
 
         except Exception as err:
             raise UpdateFailed(
                 f"Comuro update failed: {err}"
             ) from err
+
+    @callback
+    def _remove_stale_devices(
+        self,
+        current_route_ids: set[str],
+    ) -> None:
+        """Remove Comuro devices whose routes no longer exist."""
+        device_registry = dr.async_get(self.hass)
+
+        for device in device_registry.async_get_devices():
+            for identifier_domain, identifier_id in device.identifiers:
+                if (
+                    identifier_domain == DOMAIN
+                    and identifier_id not in current_route_ids
+                ):
+                    device_registry.async_remove_device(device.id)
+                    break
 
     @staticmethod
     def _get_route_file_mtime() -> float | None:
