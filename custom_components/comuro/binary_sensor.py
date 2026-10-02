@@ -23,12 +23,10 @@ async def async_setup_entry(
     """Set up Comuro binary sensors."""
     data: ComuroConfigEntry = entry  # type: ignore[assignment]
     coordinator = data.runtime_data.coordinator
-
     known_routes: set[str] = set()
 
     def add_new_routes() -> None:
         new_ids = set(coordinator.data) - known_routes
-
         if not new_ids:
             return
 
@@ -41,23 +39,24 @@ async def async_setup_entry(
                 for route_id in new_ids
             ]
         )
-
         known_routes.update(new_ids)
 
     add_new_routes()
-
-    coordinator.async_add_listener(
+    unsubscribe = coordinator.async_add_listener(
         add_new_routes
     )
+    entry.async_on_unload(unsubscribe)
 
 
 class ComuroRouteAffectedBinarySensor(
     ComuroRouteEntity,
     BinarySensorEntity,
 ):
-    """Indicate whether a route currently has affected roadworks."""
+    """Indicate whether current roadworks affect the route."""
 
-    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_device_class = (
+        BinarySensorDeviceClass.PROBLEM
+    )
 
     def __init__(
         self,
@@ -73,21 +72,19 @@ class ComuroRouteAffectedBinarySensor(
             f"{route_id}_affected"
         )
         self._attr_name = "Betroffen"
-
         self._attr_icon = "mdi:road-variant"
 
     @property
     def is_on(self) -> bool:
         """Return whether current roadworks affect the route."""
         state = self.route_state()
-
         return bool(
             state and state.current_matches
         )
 
     @property
     def extra_state_attributes(self) -> dict:
-        """Return all route matches and lifecycle information."""
+        """Return route matches and route configuration."""
         state = self.route_state()
 
         if state is None:
