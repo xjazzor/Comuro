@@ -8,6 +8,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_component
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import ComuroCoordinator
@@ -25,34 +26,59 @@ async def async_setup_entry(
     coordinator = data.runtime_data.coordinator
 
     known_routes: set[str] = set(coordinator.data)
+    entities_by_route: dict[str, list[ComuroRouteCountSensor]] = {}
+
+    async def remove_entities(
+        entities: list[ComuroRouteCountSensor],
+    ) -> None:
+        """Remove route entities from Home Assistant."""
+        for entity in entities:
+            if entity.entity_id:
+                await entity_component.async_remove_entity(
+                    hass,
+                    entity.entity_id,
+                )
 
     @callback
     def sync_routes() -> None:
         current_ids = set(coordinator.data)
-        known_routes.intersection_update(current_ids)
+        removed_ids = known_routes - current_ids
         new_ids = current_ids - known_routes
+
+        removed_entities: list[ComuroRouteCountSensor] = []
+        for route_id in removed_ids:
+            removed_entities.extend(
+                entities_by_route.pop(route_id, [])
+            )
+
+        if removed_entities:
+            hass.async_create_task(
+                remove_entities(removed_entities)
+            )
 
         if new_ids:
             new_entities: list[ComuroRouteCountSensor] = []
 
             for route_id in new_ids:
-                new_entities.extend(
-                    (
-                        ComuroRouteCountSensor(
-                            coordinator,
-                            route_id,
-                            "aktuell",
-                        ),
-                        ComuroRouteCountSensor(
-                            coordinator,
-                            route_id,
-                            "geplant",
-                        ),
-                    )
-                )
+                route_entities = [
+                    ComuroRouteCountSensor(
+                        coordinator,
+                        route_id,
+                        "aktuell",
+                    ),
+                    ComuroRouteCountSensor(
+                        coordinator,
+                        route_id,
+                        "geplant",
+                    ),
+                ]
+                entities_by_route[route_id] = route_entities
+                new_entities.extend(route_entities)
 
             async_add_entities(new_entities)
-            known_routes.update(new_ids)
+
+        known_routes.intersection_update(current_ids)
+        known_routes.update(new_ids)
 
     sync_routes()
     unsubscribe = coordinator.async_add_listener(sync_routes)
