@@ -1,0 +1,16 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Comuro",
+        "description": "Richte Comuro ein, um gespeicherte Routen auf aktuelle und geplante Baustellen aus den Dortmunder Open Data zu überwachen."
+      }
+    },
+    "error": {
+      "cannot_connect": "Der Dortmunder Open-Data-Dienst konnte nicht erreicht werden."
+    },
+    "abort": {
+      "already_configured": "Comuro ist bereits eingerichtet."
+    }
+  }
+}
