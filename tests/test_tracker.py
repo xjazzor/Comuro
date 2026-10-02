@@ -1,13 +1,13 @@
-from datetime import datetime, timezone, date
+from datetime import UTC, date, datetime
 
 from custom_components.comuro.models import ConstructionSite
 from custom_components.comuro.tracker import (
-    ConstructionTracker,
-    NEW,
     EXTENDED,
+    NEW,
+    RESOLVED,
     STATUS_CHANGED,
     UPDATED,
-    RESOLVED,
+    ConstructionTracker,
 )
 
 
@@ -16,7 +16,7 @@ NOW = datetime(
     10,
     2,
     8,
-    tzinfo=timezone.utc,
+    tzinfo=UTC,
 )
 
 
@@ -61,7 +61,7 @@ def test_same_site_on_next_snapshot_is_not_new():
             10,
             2,
             9,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
     )
 
@@ -82,7 +82,7 @@ def test_extension_has_separate_event():
             10,
             2,
             9,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
     )
 
@@ -103,7 +103,7 @@ def test_status_change_has_separate_event():
             10,
             2,
             9,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
     )
 
@@ -127,7 +127,7 @@ def test_other_change_is_updated():
             10,
             2,
             9,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
     )
 
@@ -154,7 +154,7 @@ def test_missing_construction_is_only_resolved_after_threshold():
             10,
             2,
             9,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
     )
 
@@ -167,7 +167,7 @@ def test_missing_construction_is_only_resolved_after_threshold():
             10,
             2,
             10,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
     )
 
