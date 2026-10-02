@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import date
 import hashlib
 import json
+from datetime import date
 from typing import Any
 
 import requests
-
 from .models import ConstructionSite
 
 CURRENT_URL = (
