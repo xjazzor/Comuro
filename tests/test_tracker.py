@@ -1,14 +1,8 @@
 from datetime import UTC, date, datetime
 
 from custom_components.comuro.models import ConstructionSite
-from custom_components.comuro.tracker import (  # noqa: I001
-    EXTENDED,
-    NEW,
-    RESOLVED,
-    STATUS_CHANGED,
-    UPDATED,
-    ConstructionTracker,
-)
+from custom_components.comuro import tracker
+
 
 
 NOW = datetime(
@@ -39,16 +33,16 @@ def make_site(
 
 
 def test_first_snapshot_creates_new_event():
-    tracker = ConstructionTracker()
+    tracker = tracker.ConstructionTracker()
     events = tracker.process_snapshot(
         [make_site()],
         NOW,
     )
-    assert [event.event_type for event in events] == [NEW]
+    assert [event.event_type for event in events] == [tracker.NEW]
 
 
 def test_same_site_on_next_snapshot_is_not_new():
-    tracker = ConstructionTracker()
+    tracker = tracker.ConstructionTracker()
     tracker.process_snapshot(
         [make_site()],
         NOW,
@@ -69,7 +63,7 @@ def test_same_site_on_next_snapshot_is_not_new():
 
 
 def test_extension_has_separate_event():
-    tracker = ConstructionTracker()
+    tracker = tracker.ConstructionTracker()
     tracker.process_snapshot(
         [make_site()],
         NOW,
@@ -86,11 +80,11 @@ def test_extension_has_separate_event():
         ),
     )
 
-    assert [event.event_type for event in events] == [EXTENDED]
+    assert [event.event_type for event in events] == [tracker.EXTENDED]
 
 
 def test_status_change_has_separate_event():
-    tracker = ConstructionTracker()
+    tracker = tracker.ConstructionTracker()
     tracker.process_snapshot(
         [make_site(status="geplant")],
         NOW,
@@ -110,11 +104,11 @@ def test_status_change_has_separate_event():
     assert [
         event.event_type
         for event in events
-    ] == [STATUS_CHANGED]
+    ] == [tracker.STATUS_CHANGED]
 
 
 def test_other_change_is_updated():
-    tracker = ConstructionTracker()
+    tracker = tracker.ConstructionTracker()
     tracker.process_snapshot(
         [make_site(name="Alt")],
         NOW,
@@ -134,11 +128,11 @@ def test_other_change_is_updated():
     assert [
         event.event_type
         for event in events
-    ] == [UPDATED]
+    ] == [tracker.UPDATED]
 
 
 def test_missing_construction_is_only_resolved_after_threshold():
-    tracker = ConstructionTracker(
+    tracker = tracker.ConstructionTracker(
         missing_cycles_before_resolved=2
     )
 
@@ -174,14 +168,14 @@ def test_missing_construction_is_only_resolved_after_threshold():
     assert [
         event.event_type
         for event in second_missing
-    ] == [RESOLVED]
+    ] == [tracker.RESOLVED]
 
 
 def test_tracker_roundtrip_preserves_state():
-    tracker = ConstructionTracker()
+    tracker = tracker.ConstructionTracker()
     tracker.process_snapshot([make_site()], NOW)
 
-    restored = ConstructionTracker.from_dict(tracker.to_dict())
+    restored = tracker.ConstructionTracker.from_dict(tracker.to_dict())
 
     assert restored.tracked["dortmund:1"].site == tracker.tracked["dortmund:1"].site
     assert restored.tracked["dortmund:1"].first_seen == tracker.tracked["dortmund:1"].first_seen
