@@ -29,6 +29,7 @@ async def async_setup_entry(
     @callback
     def sync_routes() -> None:
         current_ids = set(coordinator.data)
+        known_routes.intersection_update(current_ids)
         new_ids = current_ids - known_routes
 
         if new_ids:
