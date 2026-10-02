@@ -175,3 +175,14 @@ def test_missing_construction_is_only_resolved_after_threshold():
         event.event_type
         for event in second_missing
     ] == [RESOLVED]
+
+
+def test_tracker_roundtrip_preserves_state():
+    tracker = ConstructionTracker()
+    tracker.process_snapshot([make_site()], NOW)
+
+    restored = ConstructionTracker.from_dict(tracker.to_dict())
+
+    assert restored.tracked["dortmund:1"].site == tracker.tracked["dortmund:1"].site
+    assert restored.tracked["dortmund:1"].first_seen == tracker.tracked["dortmund:1"].first_seen
+    assert restored.tracked["dortmund:1"].missing_cycles == 0
