@@ -1,0 +1,16 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Comuro",
+        "description": "Set up Comuro to monitor saved routes for current and planned roadworks from Dortmund Open Data."
+      }
+    },
+    "error": {
+      "cannot_connect": "The Dortmund Open Data service could not be reached."
+    },
+    "abort": {
+      "already_configured": "Comuro is already configured."
+    }
+  }
+}
