@@ -49,9 +49,9 @@ def earliest_route_contact(
         elif isinstance(geometry, LineString):
             points.append(Point(geometry.coords[0]))
             points.append(Point(geometry.coords[-1]))
-        elif isinstance(geometry, MultiLineString) or isinstance(
+        elif isinstance(
             geometry,
-            GeometryCollection,
+            (MultiLineString, GeometryCollection),
         ):
             for part in geometry.geoms:
                 collect(part)
