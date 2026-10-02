@@ -8,11 +8,14 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_component
+from homeassistant.helpers import entity_component, entity_registry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import ComuroCoordinator
-from .entity import ComuroRouteEntity
+from .entity import (
+    ComuroRouteEntity,
+    async_remove_route_device_if_empty,
+)
 from .runtime import ComuroConfigEntry
 
 
@@ -37,10 +40,17 @@ async def async_setup_entry(
         """Remove route entities from Home Assistant."""
         for entity in entities:
             if entity.entity_id:
-                await entity_component.async_remove_entity(
-                    hass,
-                    entity.entity_id,
-                )
+                component = hass.data.get(
+                    entity_component.DATA_INSTANCES,
+                    {},
+                ).get("binary_sensor")
+                if component is not None:
+                    await component.async_remove_entity(
+                        entity.entity_id
+                    )
+
+                registry = entity_registry.async_get(hass)
+                registry.async_remove(entity.entity_id)
 
     @callback
     def sync_routes() -> None:
@@ -55,9 +65,19 @@ async def async_setup_entry(
         ]
 
         if removed_entities:
-            hass.async_create_task(
+            async_remove_task = hass.async_create_task(
                 remove_entities(removed_entities)
             )
+
+            async def cleanup_removed_devices() -> None:
+                await async_remove_task
+                for route_id in removed_ids:
+                    await async_remove_route_device_if_empty(
+                        hass,
+                        route_id,
+                    )
+
+            hass.async_create_task(cleanup_removed_devices())
 
         if new_ids:
             new_entities: list[ComuroRouteAffectedBinarySensor] = []
