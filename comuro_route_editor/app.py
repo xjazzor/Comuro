@@ -161,7 +161,27 @@ L.control.attribution({
 let routes=[];let selectedRoute=null;let editingRouteId=null;let drawing=false;let points=[];let routeLine=null;
 function status(text){document.getElementById('status').innerText=text;}
 async function loadRoutes(){const response=await fetch(apiUrl('/api/routes'));routes=await response.json();renderRoutes();}
-function renderRoutes(){const c=document.getElementById('routes');if(!routes.length){c.innerHTML='<i>Noch keine Route gespeichert.</i>';return;}c.innerHTML='';routes.forEach(route=>{const row=document.createElement('div');row.className='route-row'+(selectedRoute&&selectedRoute.id===route.id?' active':'');row.innerHTML='<b>'+escapeHtml(route.name)+'</b><div class="small">Puffer: '+Number(route.buffer_m??30)+' m · '+(route.enabled===false?'inaktiv':'aktiv')+'</div><span class="route-actions"><button onclick="selectRoute(\\''+route.id+'\\')">Anzeigen</button> <button onclick="editRoute(\\''+route.id+'\\')">✏️ Bearbeiten</button> <button onclick="deleteRoute(\\''+route.id+'\\')">🗑</button></span>';c.appendChild(row);});}
+function renderRoutes(){
+  const c=document.getElementById('routes');
+  if(!routes.length){
+    c.innerHTML='<i>Noch keine Route gespeichert.</i>';
+    return;
+  }
+  c.innerHTML='';
+  routes.forEach(route=>{
+    const row=document.createElement('div');
+    row.className='route-row'+(selectedRoute&&selectedRoute.id===route.id?' active':'');
+    row.innerHTML=`
+      <b>${escapeHtml(route.name)}</b>
+      <div class="small">Puffer: ${Number(route.buffer_m??30)} m · ${route.enabled===false?'inaktiv':'aktiv'}</div>
+      <span class="route-actions">
+        <button onclick="selectRoute('${route.id}')">Anzeigen</button>
+        <button onclick="editRoute('${route.id}')">✏️ Bearbeiten</button>
+        <button onclick="deleteRoute('${route.id}')">🗑</button>
+      </span>`;
+    c.appendChild(row);
+  });
+}
 function selectRoute(id){const route=routes.find(r=>r.id===id);if(!route)return;selectedRoute=route;editingRouteId=null;drawing=false;points=route.coordinates.map(p=>[p[1],p[0]]);redrawRoute();renderRoutes();if(routeLine)map.fitBounds(routeLine.getBounds(),{padding:[40,40]});status('Route "'+route.name+'" ausgewählt.');}
 function editRoute(id){const route=routes.find(r=>r.id===id);if(!route)return;selectedRoute=route;editingRouteId=id;drawing=true;points=route.coordinates.map(p=>[p[1],p[0]]);redrawRoute();document.getElementById('editor').style.display='block';document.getElementById('editorTitle').innerText='Route bearbeiten';document.getElementById('saveButton').innerText='💾 Änderungen speichern';document.getElementById('routeName').value=route.name;document.getElementById('buffer').value=route.buffer_m;document.getElementById('enabled').checked=route.enabled!==false;map.getContainer().style.cursor='crosshair';renderRoutes();if(routeLine)map.fitBounds(routeLine.getBounds(),{padding:[40,40]});status('Bearbeitung von "'+route.name+'".');}
 function newRoute(){drawing=true;editingRouteId=null;points=[];selectedRoute=null;if(routeLine){map.removeLayer(routeLine);routeLine=null;}document.getElementById('editor').style.display='block';document.getElementById('editorTitle').innerText='Route zeichnen';document.getElementById('saveButton').innerText='💾 Speichern';document.getElementById('routeName').value='';document.getElementById('buffer').value='30';document.getElementById('enabled').checked=true;map.getContainer().style.cursor='crosshair';renderRoutes();status('Zeichenmodus aktiv.');}
