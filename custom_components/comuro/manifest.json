@@ -1,0 +1,19 @@
+{
+  "domain": "comuro",
+  "name": "Comuro",
+  "version": "0.1.0",
+  "documentation": "https://github.com/xjazzor/Comuro",
+  "issue_tracker": "https://github.com/xjazzor/Comuro/issues",
+  "codeowners": [
+    "@xjazzor"
+  ],
+  "config_flow": true,
+  "single_config_entry": true,
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "requirements": [
+    "pyproj>=3.7",
+    "requests>=2.32",
+    "shapely>=2.1"
+  ]
+}
