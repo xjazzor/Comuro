@@ -1,3 +1,6 @@
+from shapely.geometry import LineString, Polygon
+from shapely.ops import transform
+
 from custom_components.comuro.geo import (
     TO_UTM,
     earliest_route_contact,
@@ -7,8 +10,6 @@ from custom_components.comuro.models import (
     ConstructionSite,
     Route,
 )
-from shapely.geometry import LineString, Polygon
-from shapely.ops import transform
 
 
 def make_route():
