@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, date, timezone
-from typing import Any, Iterable
+from datetime import UTC, date, datetime, timezone
+from typing import Any
 
 from .models import ConstructionEvent, ConstructionSite
 
@@ -55,7 +56,7 @@ class ConstructionTracker:
         observed_at: datetime | None = None,
     ) -> list[ConstructionEvent]:
         """Process one complete provider snapshot."""
-        now = observed_at or datetime.now(timezone.utc)
+        now = observed_at or datetime.now(UTC)
 
         current = {
             site.construction_id: site
@@ -201,7 +202,7 @@ class ConstructionTracker:
     def from_dict(
         cls,
         data: dict[str, Any],
-    ) -> "ConstructionTracker":
+    ) -> ConstructionTracker:
         tracker = cls(
             missing_cycles_before_resolved=int(
                 data.get(
