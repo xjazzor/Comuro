@@ -1,0 +1,5 @@
+pytest>=8.0
+requests>=2.32
+shapely>=2.1
+pyproj>=3.7
+ruff>=0.11
