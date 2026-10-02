@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import json
 import logging
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
@@ -123,6 +123,7 @@ class ComuroCoordinator(
             ROUTE_WATCH_INTERVAL,
         )
 
+    @callback
     def _route_watch_callback(
         self,
         now: datetime,
