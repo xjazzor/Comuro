@@ -1,8 +1,8 @@
 from datetime import UTC, date, datetime
 
 from custom_components.comuro.models import ConstructionSite
-from custom_components.comuro import tracker
-
+from custom_components.comuro import tracker as tracker_module
+from custom_components.comuro.models import ConstructionSite
 
 
 NOW = datetime(
@@ -33,7 +33,7 @@ def make_site(
 
 
 def test_first_snapshot_creates_new_event():
-    tracker = tracker_module.ConstructionTracker()
+    construction_tracker = tracker_module.ConstructionTracker()
     events = tracker_module.process_snapshot(
         [make_site()],
         NOW,
@@ -42,7 +42,7 @@ def test_first_snapshot_creates_new_event():
 
 
 def test_same_site_on_next_snapshot_is_not_new():
-    tracker = tracker_module.ConstructionTracker()
+    construction_tracker = tracker_module.ConstructionTracker()
     tracker_module.process_snapshot(
         [make_site()],
         NOW,
@@ -63,7 +63,7 @@ def test_same_site_on_next_snapshot_is_not_new():
 
 
 def test_extension_has_separate_event():
-    tracker = tracker_module.ConstructionTracker()
+    construction_tracker = tracker_module.ConstructionTracker()
     tracker_module.process_snapshot(
         [make_site()],
         NOW,
@@ -84,7 +84,7 @@ def test_extension_has_separate_event():
 
 
 def test_status_change_has_separate_event():
-    tracker = tracker_module.ConstructionTracker()
+    construction_tracker = tracker_module.ConstructionTracker()
     tracker_module.process_snapshot(
         [make_site(status="geplant")],
         NOW,
@@ -108,7 +108,7 @@ def test_status_change_has_separate_event():
 
 
 def test_other_change_is_updated():
-    tracker = tracker_module.ConstructionTracker()
+    construction_tracker = tracker_module.ConstructionTracker()
     tracker_module.process_snapshot(
         [make_site(name="Alt")],
         NOW,
@@ -132,7 +132,7 @@ def test_other_change_is_updated():
 
 
 def test_missing_construction_is_only_resolved_after_threshold():
-    tracker = tracker_module.ConstructionTracker(
+    construction_tracker = tracker_module.ConstructionTracker(
         missing_cycles_before_resolved=2
     )
 
@@ -172,7 +172,7 @@ def test_missing_construction_is_only_resolved_after_threshold():
 
 
 def test_tracker_roundtrip_preserves_state():
-    tracker = tracker_module.ConstructionTracker()
+    construction_tracker = tracker_module.ConstructionTracker()
     tracker_module.process_snapshot([make_site()], NOW)
 
     restored = tracker_module.ConstructionTracker.from_dict(tracker_module.to_dict())
