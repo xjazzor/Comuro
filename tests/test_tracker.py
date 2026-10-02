@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime
 
 from custom_components.comuro.models import ConstructionSite
-from custom_components.comuro.tracker import (
+from custom_components.comuro.tracker import (  # noqa: I001
     EXTENDED,
     NEW,
     RESOLVED,
