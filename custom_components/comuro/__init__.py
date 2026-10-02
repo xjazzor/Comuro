@@ -35,6 +35,10 @@ async def async_setup_entry(
         coordinator=coordinator,
     )
 
+    entry.async_on_unload(
+        coordinator.async_start_route_watcher()
+    )
+
     await hass.config_entries.async_forward_entry_setups(
         entry,
         PLATFORMS,
