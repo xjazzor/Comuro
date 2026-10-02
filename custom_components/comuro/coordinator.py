@@ -257,7 +257,7 @@ class ComuroCoordinator(
             # Compatibility with the original PoC format.
             raw_routes = payload
         else:
-            raise RuntimeError(
+            raise TypeError(
                 "Invalid routes file format"
             )
 
