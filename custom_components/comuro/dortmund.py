@@ -99,7 +99,6 @@ class DortmundProvider:
 
         source_id = (
             record.get("id")
-            or record.get("recordid")
             or record.get("objectid")
             or record.get("ident")
         )
@@ -118,9 +117,10 @@ class DortmundProvider:
                     record.get("strasse")
                     or record.get("straße")
                 ),
-                "von": record.get("von"),
-                "bis": record.get("bis"),
                 "stadtbezirk": record.get("stadtbezirk"),
+                # Keep the fallback identity independent of dates so
+                # extensions remain the same construction.
+                "location": DortmundProvider._location_key(record),
             }
 
             source_id = hashlib.sha256(
@@ -172,6 +172,27 @@ class DortmundProvider:
             return geo
 
         return None
+
+    @staticmethod
+    def _location_key(record: dict[str, Any]) -> Any:
+        """Return a stable, rounded location key when available."""
+        point = record.get("geo_point_2d")
+        if not isinstance(point, dict):
+            return None
+
+        lon = point.get("lon")
+        lat = point.get("lat")
+
+        if lon is None or lat is None:
+            return None
+
+        try:
+            return (
+                round(float(lon), 5),
+                round(float(lat), 5),
+            )
+        except (TypeError, ValueError):
+            return None
 
     @staticmethod
     def _display_name(
