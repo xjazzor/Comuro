@@ -157,7 +157,7 @@ class ComuroCoordinator(
             self._remove_stale_devices(set(evaluated))
             self.async_set_updated_data(evaluated)
 
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001
             _LOGGER.warning(
                 "Failed to reload Comuro routes: %s",
                 err,
