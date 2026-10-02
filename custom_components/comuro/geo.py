@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from pyproj import Transformer
 from shapely.geometry import (
@@ -49,10 +49,10 @@ def earliest_route_contact(
         elif isinstance(geometry, LineString):
             points.append(Point(geometry.coords[0]))
             points.append(Point(geometry.coords[-1]))
-        elif isinstance(geometry, MultiLineString):
-            for part in geometry.geoms:
-                collect(part)
-        elif isinstance(geometry, GeometryCollection):
+        elif isinstance(geometry, MultiLineString) or isinstance(
+            geometry,
+            GeometryCollection,
+        ):
             for part in geometry.geoms:
                 collect(part)
         else:
