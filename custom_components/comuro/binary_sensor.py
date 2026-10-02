@@ -7,7 +7,8 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_component
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import ComuroCoordinator
@@ -23,28 +24,50 @@ async def async_setup_entry(
     """Set up Comuro binary sensors."""
     data: ComuroConfigEntry = entry  # type: ignore[assignment]
     coordinator = data.runtime_data.coordinator
-    known_routes: set[str] = set()
 
-    def add_new_routes() -> None:
-        new_ids = set(coordinator.data) - known_routes
-        if not new_ids:
-            return
+    known_routes: set[str] = set(coordinator.data)
+    entities_by_route: dict[str, ComuroRouteAffectedBinarySensor] = {}
 
-        async_add_entities(
-            [
-                ComuroRouteAffectedBinarySensor(
+    async def remove_routes(route_ids: set[str]) -> None:
+        """Remove entities belonging to deleted routes."""
+        for route_id in route_ids:
+            entity = entities_by_route.pop(route_id, None)
+            if entity is not None and entity.entity_id:
+                await entity_component.async_remove_entity(
+                    hass,
+                    entity.entity_id,
+                )
+
+    @callback
+    def sync_routes() -> None:
+        current_ids = set(coordinator.data)
+        removed_ids = known_routes - current_ids
+        new_ids = current_ids - known_routes
+
+        if removed_ids:
+            hass.async_create_task(
+                remove_routes(removed_ids),
+                eager_start=True,
+            )
+
+        if new_ids:
+            new_entities: list[ComuroRouteAffectedBinarySensor] = []
+
+            for route_id in new_ids:
+                entity = ComuroRouteAffectedBinarySensor(
                     coordinator,
                     route_id,
                 )
-                for route_id in new_ids
-            ]
-        )
+                entities_by_route[route_id] = entity
+                new_entities.append(entity)
+
+            async_add_entities(new_entities)
+
+        known_routes.intersection_update(current_ids)
         known_routes.update(new_ids)
 
-    add_new_routes()
-    unsubscribe = coordinator.async_add_listener(
-        add_new_routes
-    )
+    sync_routes()
+    unsubscribe = coordinator.async_add_listener(sync_routes)
     entry.async_on_unload(unsubscribe)
 
 
