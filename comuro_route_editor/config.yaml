@@ -3,7 +3,6 @@ slug: comuro_route_editor
 description: "Interactive route editor for Comuro"
 version: "0.1.0"
 url: "https://github.com/xjazzor/Comuro"
-image: "ghcr.io/xjazzor/{arch}-addon-comuro_route_editor"
 arch:
   - amd64
   - aarch64
