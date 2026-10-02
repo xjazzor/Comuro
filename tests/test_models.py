@@ -1,6 +1,6 @@
 from datetime import date
 
-from comuro.models import ConstructionSite
+from custom_components.comuro.models import ConstructionSite
 
 
 def site(end=date(2026, 11, 13), status="aktuell"):
@@ -16,4 +16,7 @@ def site(end=date(2026, 11, 13), status="aktuell"):
 
 
 def test_fingerprint_changes_when_end_date_changes():
-    assert site().fingerprint != site(date(2026, 11, 20)).fingerprint
+    assert (
+        site().fingerprint
+        != site(date(2026, 11, 20)).fingerprint
+    )
