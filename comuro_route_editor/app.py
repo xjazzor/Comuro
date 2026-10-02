@@ -86,9 +86,12 @@ HTML = r'''
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Comuro – Route Editor</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
 <style>
 html,body,#map{height:100%;margin:0;font-family:system-ui,sans-serif}
 #map{background:#ddd}
+.leaflet-container{background:#ddd}
+.maplibregl-map{font:inherit}
 .panel{position:absolute;z-index:1000;top:12px;left:12px;width:370px;max-height:calc(100vh - 24px);overflow-y:auto;background:white;padding:14px;border-radius:12px;box-shadow:0 3px 18px #0004}
 button,input{padding:7px;margin:3px}
 button{cursor:pointer}
@@ -117,9 +120,20 @@ Puffer: <input id="buffer" type="number" value="30" min="0" max="500"> Meter<br>
 <div id="status" class="section">Keine Route ausgewählt.</div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet/leaflet-maplibre-gl.js"></script>
 <script>
 const map=L.map('map').setView([51.5136,7.4653],12);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap-Mitwirkende'}).addTo(map);
+L.maplibreGL({
+  style:'https://tiles.openfreemap.org/styles/liberty'
+}).addTo(map);
+L.control.attribution({
+  prefix:false
+}).addAttribution(
+  '<a href="https://openfreemap.org/">OpenFreeMap</a> · ' +
+  '<a href="https://openmaptiles.org/">© OpenMapTiles</a> · ' +
+  '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap-Mitwirkende</a>'
+).addTo(map);
 let routes=[];let selectedRoute=null;let drawing=false;let points=[];let routeLine=null;
 function status(text){document.getElementById('status').innerText=text;}
 async function loadRoutes(){const response=await fetch('/api/routes');routes=await response.json();renderRoutes();}
