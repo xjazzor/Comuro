@@ -1,5 +1,12 @@
-from comuro.geo import earliest_route_contact, match_route, TO_UTM
-from comuro.models import ConstructionSite, Route
+from custom_components.comuro.geo import (
+    TO_UTM,
+    earliest_route_contact,
+    match_route,
+)
+from custom_components.comuro.models import (
+    ConstructionSite,
+    Route,
+)
 from shapely.geometry import LineString, Polygon
 from shapely.ops import transform
 
@@ -18,7 +25,6 @@ def make_route():
 
 
 def make_site(site_id, x, y=51.5):
-    # Small polygon in WGS84 for deterministic geometry tests.
     delta = 0.00008
     geometry = {
         "type": "Polygon",
@@ -58,7 +64,6 @@ def test_match_is_sorted_by_first_contact_along_route():
 def test_same_construction_only_appears_once():
     route = make_route()
 
-    # Geometry crosses the route in two separated regions.
     geometry = {
         "type": "MultiPolygon",
         "coordinates": [
@@ -90,7 +95,11 @@ def test_same_construction_only_appears_once():
 
 def test_earliest_contact_is_before_later_intersection():
     route = make_route()
-    route_m = transform(TO_UTM, LineString(route.coordinates))
+    route_m = transform(
+        TO_UTM,
+        LineString(route.coordinates),
+    )
+
     construction = transform(
         TO_UTM,
         Polygon([
@@ -102,6 +111,10 @@ def test_earliest_contact_is_before_later_intersection():
         ]),
     )
 
-    position = earliest_route_contact(route_m, construction, 30)
+    position = earliest_route_contact(
+        route_m,
+        construction,
+        30,
+    )
 
     assert position is not None
