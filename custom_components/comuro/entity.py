@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
@@ -80,3 +82,25 @@ class ComuroRouteEntity(
             }
             for match in state.matches
         ]
+
+
+async def async_remove_route_device_if_empty(
+    hass: HomeAssistant,
+    route_id: str,
+) -> None:
+    """Remove the route device when no registry entities remain."""
+    device_registry = dr.async_get(hass)
+    entity_registry = er.async_get(hass)
+
+    for device in list(device_registry.async_get_devices()):
+        if (DOMAIN, route_id) not in device.identifiers:
+            continue
+
+        if not er.async_entries_for_device(
+            entity_registry,
+            device.id,
+            include_disabled_entities=True,
+        ):
+            device_registry.async_remove_device(device.id)
+
+        return
