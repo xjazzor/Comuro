@@ -101,3 +101,23 @@ def test_same_site_in_planned_and_current_prefers_current():
 
     assert len(sites) == 1
     assert sites[0].status == "aktuell"
+
+
+def test_fallback_construction_id_is_stable_when_end_date_changes():
+    first = sample_record("geplant")
+    second = sample_record("geplant")
+    second["bis"] = "2026-11-20"
+    second["zeitraum"] = "02.10.2026 - 20.11.2026"
+
+    first_site = DortmundProvider._normalize_record(
+        first,
+        "geplant",
+    )
+    second_site = DortmundProvider._normalize_record(
+        second,
+        "geplant",
+    )
+
+    assert first_site is not None
+    assert second_site is not None
+    assert first_site.construction_id == second_site.construction_id
