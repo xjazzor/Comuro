@@ -28,15 +28,16 @@ async def async_setup_entry(
     known_routes: set[str] = set(coordinator.data)
     entities_by_route: dict[str, list[ComuroRouteCountSensor]] = {}
 
-    async def remove_routes(route_ids: set[str]) -> None:
-        """Remove entities belonging to deleted routes."""
-        for route_id in route_ids:
-            for entity in entities_by_route.pop(route_id, []):
-                if entity.entity_id:
-                    await entity_component.async_remove_entity(
-                        hass,
-                        entity.entity_id,
-                    )
+    async def remove_entities(
+        entities: list[ComuroRouteCountSensor],
+    ) -> None:
+        """Remove a captured set of route entities."""
+        for entity in entities:
+            if entity.entity_id:
+                await entity_component.async_remove_entity(
+                    hass,
+                    entity.entity_id,
+                )
 
     @callback
     def sync_routes() -> None:
@@ -44,10 +45,15 @@ async def async_setup_entry(
         removed_ids = known_routes - current_ids
         new_ids = current_ids - known_routes
 
-        if removed_ids:
+        removed_entities: list[ComuroRouteCountSensor] = []
+        for route_id in removed_ids:
+            removed_entities.extend(
+                entities_by_route.pop(route_id, [])
+            )
+
+        if removed_entities:
             hass.async_create_task(
-                remove_routes(removed_ids),
-                eager_start=True,
+                remove_entities(removed_entities)
             )
 
         if new_ids:
