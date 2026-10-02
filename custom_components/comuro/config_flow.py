@@ -30,7 +30,7 @@ class ComuroConfigFlow(
                 await self.hass.async_add_executor_job(
                     DortmundProvider().fetch_snapshot
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001
                 return self.async_show_form(
                     step_id="user",
                     data_schema=vol.Schema({}),
