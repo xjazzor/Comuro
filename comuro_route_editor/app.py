@@ -6,7 +6,7 @@ import os
 import threading
 import uuid
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -75,8 +75,9 @@ def api_delete_route(route_id: str):
     return {"success": True}
 
 @app.get("/", response_class=HTMLResponse)
-def index():
-    return HTML
+def index(request: Request):
+    ingress_path = request.headers.get("X-Ingress-Path", "").rstrip("/")
+    return HTML.replace("__INGRESS_PATH__", ingress_path)
 
 HTML = r'''
 <!doctype html>
@@ -123,6 +124,8 @@ Puffer: <input id="buffer" type="number" value="30" min="0" max="500"> Meter<br>
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet/leaflet-maplibre-gl.js"></script>
 <script>
+const API_BASE='__INGRESS_PATH__';
+const apiUrl=(path)=>API_BASE+path;
 const map=L.map('map').setView([51.5136,7.4653],12);
 L.maplibreGL({
   style:'https://tiles.openfreemap.org/styles/liberty'
@@ -136,7 +139,7 @@ L.control.attribution({
 ).addTo(map);
 let routes=[];let selectedRoute=null;let drawing=false;let points=[];let routeLine=null;
 function status(text){document.getElementById('status').innerText=text;}
-async function loadRoutes(){const response=await fetch('/api/routes');routes=await response.json();renderRoutes();}
+async function loadRoutes(){const response=await fetch(apiUrl('/api/routes'));routes=await response.json();renderRoutes();}
 function renderRoutes(){const c=document.getElementById('routes');if(!routes.length){c.innerHTML='<i>Noch keine Route gespeichert.</i>';return;}c.innerHTML='';routes.forEach(route=>{const row=document.createElement('div');row.className='route-row'+(selectedRoute&&selectedRoute.id===route.id?' active':'');row.innerHTML='<b>'+escapeHtml(route.name)+'</b> <span class="route-actions"><button onclick="selectRoute(\''+route.id+'\')">Anzeigen</button> <button onclick="deleteRoute(\''+route.id+'\')">🗑</button></span>';c.appendChild(row);});}
 function selectRoute(id){const route=routes.find(r=>r.id===id);if(!route)return;selectedRoute=route;drawing=false;points=route.coordinates.map(p=>[p[1],p[0]]);redrawRoute();renderRoutes();if(routeLine)map.fitBounds(routeLine.getBounds(),{padding:[40,40]});status('Route "'+route.name+'" ausgewählt.');}
 function newRoute(){drawing=true;points=[];selectedRoute=null;if(routeLine){map.removeLayer(routeLine);routeLine=null;}document.getElementById('editor').style.display='block';document.getElementById('routeName').value='';document.getElementById('buffer').value='30';map.getContainer().style.cursor='crosshair';renderRoutes();status('Zeichenmodus aktiv.');}
@@ -145,7 +148,7 @@ function redrawRoute(){if(routeLine)map.removeLayer(routeLine);if(points.length>
 function undoPoint(){if(!drawing)return;points.pop();redrawRoute();}
 function cancelDrawing(){drawing=false;points=[];if(routeLine){map.removeLayer(routeLine);routeLine=null;}document.getElementById('editor').style.display='none';map.getContainer().style.cursor='';status('Zeichnen abgebrochen.');}
 async function finishRoute(){if(points.length<2){alert('Bitte mindestens zwei Punkte setzen.');return;}const name=document.getElementById('routeName').value.trim();if(!name){alert('Bitte einen Routennamen vergeben.');return;}const buffer=Number(document.getElementById('buffer').value);const coordinates=points.map(p=>[p[1],p[0]]);const response=await fetch('/api/routes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,coordinates,buffer_m:buffer,enabled:true})});if(!response.ok){const error=await response.json();alert(error.detail||'Route konnte nicht gespeichert werden.');return;}const route=await response.json();routes.push(route);selectedRoute=route;drawing=false;document.getElementById('editor').style.display='none';map.getContainer().style.cursor='';renderRoutes();status('Route "'+route.name+'" gespeichert.');}
-async function deleteRoute(id){const route=routes.find(r=>r.id===id);if(!route)return;if(!confirm('Route "'+route.name+'" wirklich löschen?'))return;const response=await fetch('/api/routes/'+id,{method:'DELETE'});if(!response.ok){alert('Route konnte nicht gelöscht werden.');return;}routes=routes.filter(r=>r.id!==id);if(selectedRoute&&selectedRoute.id===id){selectedRoute=null;if(routeLine){map.removeLayer(routeLine);routeLine=null;}}renderRoutes();status('Route gelöscht.');}
+async function deleteRoute(id){const route=routes.find(r=>r.id===id);if(!route)return;if(!confirm('Route "'+route.name+'" wirklich löschen?'))return;const response=await fetch(apiUrl('/api/routes/'+id),{method:'DELETE'});if(!response.ok){alert('Route konnte nicht gelöscht werden.');return;}routes=routes.filter(r=>r.id!==id);if(selectedRoute&&selectedRoute.id===id){selectedRoute=null;if(routeLine){map.removeLayer(routeLine);routeLine=null;}}renderRoutes();status('Route gelöscht.');}
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]);}
 loadRoutes();
 </script>
