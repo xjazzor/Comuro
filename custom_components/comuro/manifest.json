@@ -1,7 +1,7 @@
 {
   "domain": "comuro",
   "name": "Comuro",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "documentation": "https://github.com/xjazzor/Comuro",
   "issue_tracker": "https://github.com/xjazzor/Comuro/issues",
   "codeowners": [
