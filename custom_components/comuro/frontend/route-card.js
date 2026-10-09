@@ -839,12 +839,14 @@
               "<div class='title'>" +
                 this._escape(routeName) +
               "</div>" +
-              "<div class='subtitle'>" +
-                currentCount +
-                " aktuell · " +
-                plannedCount +
-                " geplant" +
-              "</div>" +
+              (this._config.show_counts
+                ? "<div class='subtitle'>" +
+                  currentCount +
+                  " aktuell · " +
+                  plannedCount +
+                  " geplant" +
+                  "</div>"
+                : "") +
             "</div>" +
           "</div>" +
           filterControls +
