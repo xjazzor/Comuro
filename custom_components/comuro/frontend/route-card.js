@@ -271,36 +271,47 @@
     }
   }
 
-  if (!customElements.get(TAG)) {
-    customElements.define(TAG, ComuroRouteCard);
+  function registerCard() {
+    // Home Assistant 2026.x can execute extra modules before the scoped
+    // custom-element registry polyfill replaces window.customElements.
+    // Registering after the window load event avoids losing the definition.
+    if (!customElements.get(TAG)) {
+      customElements.define(TAG, ComuroRouteCard);
+    }
+
+    window.customCards = window.customCards || [];
+
+    if (!window.customCards.some((card) => card.type === TAG)) {
+      window.customCards.push({
+        type: TAG,
+        name: "Comuro Route",
+        description: "Zeigt aktuelle und geplante Baustellen einer Comuro-Route.",
+        preview: true,
+        documentationURL: "https://github.com/xjazzor/Comuro",
+        getEntitySuggestion: (hass, entityId) => {
+          const state = hass && hass.states ? hass.states[entityId] : null;
+          if (
+            !state ||
+            !entityId.startsWith("binary_sensor.") ||
+            !Array.isArray(state.attributes && state.attributes.matches)
+          ) {
+            return null;
+          }
+
+          return {
+            config: {
+              type: "custom:" + TAG,
+              entity: entityId,
+            },
+          };
+        },
+      });
+    }
   }
 
-  window.customCards = window.customCards || [];
-
-  if (!window.customCards.some((card) => card.type === TAG)) {
-    window.customCards.push({
-      type: TAG,
-      name: "Comuro Route",
-      description: "Zeigt aktuelle und geplante Baustellen einer Comuro-Route.",
-      preview: true,
-      documentationURL: "https://github.com/xjazzor/Comuro",
-      getEntitySuggestion: (hass, entityId) => {
-        const state = hass && hass.states ? hass.states[entityId] : null;
-        if (
-          !state ||
-          !entityId.startsWith("binary_sensor.") ||
-          !Array.isArray(state.attributes && state.attributes.matches)
-        ) {
-          return null;
-        }
-
-        return {
-          config: {
-            type: "custom:" + TAG,
-            entity: entityId,
-          },
-        };
-      },
-    });
+  if (document.readyState === "complete") {
+    registerCard();
+  } else {
+    window.addEventListener("load", registerCard, { once: true });
   }
 })();
