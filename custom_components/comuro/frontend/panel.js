@@ -49,6 +49,9 @@
 
     set hass(value) {
       this._hass = value;
+      if (this._map) {
+        this._map.hass = value;
+      }
     }
 
     set narrow(value) {
@@ -86,6 +89,7 @@
         await ensureHomeAssistantMap();
 
         this._map = this.querySelector("#map");
+        this._map.hass = this._hass;
         this._map.addEventListener(
           "map-clicked",
           this._handleMapClick
@@ -116,15 +120,14 @@
     }
 
     async _loadRoutes() {
-      const response = await fetch(API_BASE + "/routes", {
-        credentials: "same-origin",
-      });
-
-      if (!response.ok) {
-        throw new Error("Routen konnten nicht geladen werden.");
+      if (!this._hass?.callApi) {
+        throw new Error("Home Assistant API ist noch nicht verfügbar.");
       }
 
-      this._routes = await response.json();
+      this._routes = await this._hass.callApi(
+        "GET",
+        API_BASE + "/routes"
+      );
       this._renderRoutes();
     }
 
@@ -393,13 +396,18 @@
           }
 
           .map-wrap {
+            position: relative;
             min-width: 0;
             min-height: 0;
-            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
             background: var(--primary-background-color);
           }
 
           ha-map {
+            position: absolute;
+            inset: 0;
             display: block;
             width: 100%;
             height: 100%;
@@ -822,27 +830,25 @@
           encodeURIComponent(this._editingRouteId)
         : API_BASE + "/routes";
 
-      const response = await fetch(url, {
-        method,
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      if (!this._hass?.callApi) {
+        this._setStatus("Home Assistant API ist noch nicht verfügbar.");
+        return;
+      }
 
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({}));
+      let route;
+      try {
+        route = await this._hass.callApi(
+          method,
+          url,
+          payload
+        );
+      } catch (error) {
         this._setStatus(
-          error.message ||
+          error?.message ||
             "Route konnte nicht gespeichert werden."
         );
         return;
       }
-
-      const route = await response.json();
 
       if (this._editingRouteId) {
         const index = this._routes.findIndex(
@@ -886,18 +892,23 @@
         return;
       }
 
-      const response = await fetch(
-        API_BASE +
-          "/routes/" +
-          encodeURIComponent(id),
-        {
-          method: "DELETE",
-          credentials: "same-origin",
-        }
-      );
+      if (!this._hass?.callApi) {
+        this._setStatus("Home Assistant API ist noch nicht verfügbar.");
+        return;
+      }
 
-      if (!response.ok) {
-        this._setStatus("Route konnte nicht gelöscht werden.");
+      try {
+        await this._hass.callApi(
+          "DELETE",
+          API_BASE +
+            "/routes/" +
+            encodeURIComponent(id)
+        );
+      } catch (error) {
+        this._setStatus(
+          error?.message ||
+            "Route konnte nicht gelöscht werden."
+        );
         return;
       }
 
