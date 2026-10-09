@@ -23,6 +23,7 @@ PLATFORMS: tuple[str, ...] = (
 PANEL_URL = "comuro"
 PANEL_STATIC_PATH = "/comuro_static"
 PANEL_JS = f"{PANEL_STATIC_PATH}/panel.js?v={INTEGRATION_VERSION}"
+ROUTE_CARD_JS = f"{PANEL_STATIC_PATH}/route-card.js?v={INTEGRATION_VERSION}"
 
 
 async def async_setup(
@@ -46,6 +47,8 @@ async def async_setup(
             )
         ]
     )
+
+    frontend.add_extra_js_url(hass, ROUTE_CARD_JS)
 
     if not frontend.async_panel_exists(hass, PANEL_URL):
         await panel_custom.async_register_panel(
@@ -99,10 +102,7 @@ async def async_unload_entry(
     entry: ConfigEntry[ComuroRuntimeData],
 ) -> bool:
     """Unload Comuro."""
-    return await hass.config_entries.async_unload_platforms(
-        entry,
-        PLATFORMS,
-    )
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 __all__ = ["DOMAIN", "PLATFORMS"]
