@@ -2,11 +2,22 @@
 
 Comuro is a Home Assistant integration for monitoring saved routes and detecting current and planned roadworks that affect them.
 
-The route editor is now part of Comuro itself. There is no separate route-editor add-on anymore.
+## Comuro Route dashboard card
+
+Comuro also registers a native Lovelace custom card automatically. No separate frontend resource has to be added manually.
+
+The card reads the existing `matches` attribute from a Comuro route's **Betroffen** binary sensor and displays current and planned roadworks ordered from the start of the route.
+
+Minimal dashboard configuration:
+
+```yaml
+type: custom:comuro-route-card
+entity: binary_sensor.<deine_route>_betroffen
+```
+
+The card supports the Home Assistant card editor and only requires the route's **Betroffen** entity.
 
 ## Install with HACS
-
-Comuro is packaged as a Home Assistant integration and can be installed through HACS as a custom repository during development.
 
 In Home Assistant:
 
@@ -62,8 +73,6 @@ The route panel communicates directly with the Comuro integration through Home A
    Route-specific state
 ```
 
-The panel is registered by the integration and is administrator-only. Route changes are applied immediately against the cached Dortmund snapshot, so changing a route does not trigger another Dortmund network request.
-
 ## Current design decisions
 
 - Dortmund Open Data is the first provider.
@@ -99,7 +108,8 @@ Comuro/
 │       ├── sensor.py
 │       ├── binary_sensor.py
 │       ├── frontend/
-│       │   └── panel.js
+│       │   ├── panel.js
+│       │   └── route-card.js
 │       ├── strings.json
 │       └── translations/
 ├── contracts/
@@ -146,6 +156,7 @@ The integration currently uses:
 - Home Assistant persistent storage for construction lifecycle state
 - Home Assistant persistent storage for routes
 - a native administrator-only Comuro sidebar panel
+- a native Lovelace Comuro Route card, automatically registered by the integration
 - dynamic per-route entities for current/planned construction counts and current route impact
 
 ## Data source
