@@ -8,8 +8,8 @@ from datetime import date
 from typing import Any
 
 import requests
-import urllib3
 from requests.adapters import HTTPAdapter
+import urllib3
 
 from .models import ConstructionSite
 
