@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from homeassistant.components import panel_custom
+
 from .const import DOMAIN
 
 if TYPE_CHECKING:
@@ -20,14 +22,14 @@ PLATFORMS: tuple[str, ...] = (
 
 PANEL_URL = "comuro"
 PANEL_STATIC_PATH = "/comuro_static"
-PANEL_JS = f"{PANEL_STATIC_PATH}/panel.js?v=0.2.2"
+PANEL_JS = f"{PANEL_STATIC_PATH}/panel.js"
 
 
 async def async_setup(
     hass: HomeAssistant,
     config: dict,
 ) -> bool:
-    """Set up global Comuro HTTP and frontend resources."""
+    """Set up global Comuro frontend resources."""
     from homeassistant.components.http import StaticPathConfig
 
     from .api import async_setup_views
@@ -44,6 +46,19 @@ async def async_setup(
             )
         ]
     )
+
+    if not panel_custom.async_panel_exists(hass, PANEL_URL):
+        await panel_custom.async_register_panel(
+            hass=hass,
+            webcomponent_name="comuro-panel",
+            frontend_url_path=PANEL_URL,
+            module_url=PANEL_JS,
+            sidebar_title="Comuro",
+            sidebar_icon="mdi:map-marker-path",
+            embed_iframe=False,
+            require_admin=True,
+        )
+
     return True
 
 
@@ -52,8 +67,6 @@ async def async_setup_entry(
     entry: ConfigEntry[ComuroRuntimeData],
 ) -> bool:
     """Set up Comuro from a config entry."""
-    from homeassistant.components import frontend
-
     from .coordinator import ComuroCoordinator
     from .route_store import RouteStore
     from .runtime import ComuroRuntimeData
@@ -66,38 +79,12 @@ async def async_setup_entry(
         route_store,
     )
 
-    # Fail setup when Dortmund is unreachable.
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = ComuroRuntimeData(
         coordinator=coordinator,
         route_store=route_store,
     )
-
-    if not frontend.async_panel_exists(hass, PANEL_URL):
-        frontend.async_register_built_in_panel(
-            hass,
-            component_name="custom",
-            sidebar_title="Comuro",
-            sidebar_icon="mdi:map-marker-path",
-            frontend_url_path=PANEL_URL,
-            config={
-                "_panel_custom": {
-                    "name": "comuro-panel",
-                    "embed_iframe": False,
-                    "trust_external": False,
-                    "js_url": PANEL_JS,
-                }
-            },
-            require_admin=True,
-        )
-        entry.async_on_unload(
-            lambda: frontend.async_remove_panel(
-                hass,
-                PANEL_URL,
-                warn_if_unknown=False,
-            )
-        )
 
     await hass.config_entries.async_forward_entry_setups(
         entry,
