@@ -1,6 +1,6 @@
 (() => {
   const PANEL_TAG = "comuro-panel";
-  const API_BASE = "api/comuro";
+  const API_BASE = "comuro";
 
   async function ensureHomeAssistantMap() {
     if (customElements.get("ha-map")) {
