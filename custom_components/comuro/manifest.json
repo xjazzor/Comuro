@@ -19,5 +19,5 @@
     "shapely>=2.1"
   ],
   "single_config_entry": true,
-  "version": "0.2.3"
+  "version": "0.2.4"
 }
