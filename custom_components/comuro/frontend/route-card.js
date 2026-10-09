@@ -76,146 +76,315 @@
       return {
         schema: [
           {
-            name: "entity",
-            required: true,
-            selector: {
-              entity: {
-                domain: "binary_sensor",
+            type: "expandable",
+            name: "general",
+            title: "Allgemein",
+            flatten: true,
+            schema: [
+              {
+                name: "entity",
+                required: true,
+                selector: {
+                  entity: {
+                    filter: {
+                      domain: "binary_sensor",
+                    },
+                  },
+                },
               },
-            },
-          },
-          {
-            name: "title",
-            selector: {
-              text: {},
-            },
-          },
-          {
-            name: "icon",
-            selector: {
-              text: {},
-            },
-          },
-          {
-            name: "show_filter",
-            selector: {
-              boolean: {},
-            },
-          },
-          {
-            name: "default_filter",
-            selector: {
-              select: {
-                options: [
-                  "all",
-                  "aktuell",
-                  "geplant",
+              {
+                type: "grid",
+                name: "",
+                flatten: true,
+                schema: [
+                  {
+                    name: "title",
+                    selector: {
+                      text: {},
+                    },
+                  },
+                  {
+                    name: "icon",
+                    selector: {
+                      icon: {},
+                    },
+                    context: {
+                      icon_entity: "entity",
+                    },
+                  },
                 ],
-                mode: "dropdown",
               },
-            },
+            ],
           },
           {
-            name: "max_items",
-            selector: {
-              number: {
-                min: 0,
-                max: 50,
-                mode: "slider",
+            type: "expandable",
+            name: "display",
+            title: "Anzeige",
+            flatten: true,
+            schema: [
+              {
+                type: "grid",
+                name: "",
+                flatten: true,
+                schema: [
+                  {
+                    name: "show_filter",
+                    selector: {
+                      boolean: {},
+                    },
+                  },
+                  {
+                    name: "default_filter",
+                    visible: {
+                      field: "show_filter",
+                      value: true,
+                    },
+                    selector: {
+                      select: {
+                        options: [
+                          {
+                            value: "all",
+                            label: "Alle",
+                          },
+                          {
+                            value: "aktuell",
+                            label: "Aktuell",
+                          },
+                          {
+                            value: "geplant",
+                            label: "Geplant",
+                          },
+                        ],
+                        mode: "box",
+                        box_max_columns: 3,
+                      },
+                    },
+                  },
+                  {
+                    name: "max_items",
+                    selector: {
+                      number: {
+                        min: 0,
+                        max: 50,
+                        step: 1,
+                        mode: "box",
+                      },
+                    },
+                  },
+                  {
+                    name: "compact",
+                    selector: {
+                      boolean: {},
+                    },
+                  },
+                ],
               },
-            },
+              {
+                type: "grid",
+                name: "",
+                flatten: true,
+                schema: [
+                  {
+                    name: "show_counts",
+                    selector: {
+                      boolean: {},
+                    },
+                  },
+                  {
+                    name: "show_distance",
+                    selector: {
+                      boolean: {},
+                    },
+                  },
+                  {
+                    name: "show_status",
+                    selector: {
+                      boolean: {},
+                    },
+                  },
+                  {
+                    name: "show_dates",
+                    selector: {
+                      boolean: {},
+                    },
+                  },
+                  {
+                    name: "show_footer",
+                    selector: {
+                      boolean: {},
+                    },
+                  },
+                  {
+                    name: "show_icon",
+                    selector: {
+                      boolean: {},
+                    },
+                  },
+                ],
+              },
+            ],
           },
           {
-            name: "show_counts",
-            selector: {
-              boolean: {},
-            },
-          },
-          {
-            name: "show_distance",
-            selector: {
-              boolean: {},
-            },
-          },
-          {
-            name: "show_status",
-            selector: {
-              boolean: {},
-            },
-          },
-          {
-            name: "show_dates",
-            selector: {
-              boolean: {},
-            },
-          },
-          {
-            name: "show_footer",
-            selector: {
-              boolean: {},
-            },
-          },
-          {
-            name: "show_icon",
-            selector: {
-              boolean: {},
-            },
-          },
-          {
-            name: "compact",
-            selector: {
-              boolean: {},
-            },
-          },
-          {
-            name: "accent_color",
-            selector: {
-              text: {},
-            },
-          },
-          {
-            name: "current_color",
-            selector: {
-              text: {},
-            },
-          },
-          {
-            name: "planned_color",
-            selector: {
-              text: {},
-            },
-          },
-          {
-            name: "current_background",
-            selector: {
-              text: {},
-            },
-          },
-          {
-            name: "planned_background",
-            selector: {
-              text: {},
-            },
-          },
-          {
-            name: "card_background",
-            selector: {
-              text: {},
-            },
-          },
-          {
-            name: "divider_color",
-            selector: {
-              text: {},
-            },
-          },
-          {
-            name: "secondary_text_color",
-            selector: {
-              text: {},
-            },
+            type: "expandable",
+            name: "appearance",
+            title: "Farben & Design",
+            flatten: true,
+            schema: [
+              {
+                type: "grid",
+                name: "",
+                flatten: true,
+                schema: [
+                  {
+                    name: "accent_color",
+                    selector: {
+                      text: {
+                        type: "color",
+                      },
+                    },
+                  },
+                  {
+                    name: "current_color",
+                    selector: {
+                      text: {
+                        type: "color",
+                      },
+                    },
+                  },
+                  {
+                    name: "planned_color",
+                    selector: {
+                      text: {
+                        type: "color",
+                      },
+                    },
+                  },
+                  {
+                    name: "current_background",
+                    selector: {
+                      text: {
+                        type: "color",
+                      },
+                    },
+                  },
+                  {
+                    name: "planned_background",
+                    selector: {
+                      text: {
+                        type: "color",
+                      },
+                    },
+                  },
+                  {
+                    name: "card_background",
+                    selector: {
+                      text: {
+                        type: "color",
+                      },
+                    },
+                  },
+                  {
+                    name: "divider_color",
+                    selector: {
+                      text: {
+                        type: "color",
+                      },
+                    },
+                  },
+                  {
+                    name: "secondary_text_color",
+                    selector: {
+                      text: {
+                        type: "color",
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
           },
         ],
+        computeLabel: (schema) => {
+          const labels = {
+            entity: "Route",
+            title: "Titel",
+            icon: "Symbol",
+            show_filter: "Filter anzeigen",
+            default_filter: "Startfilter",
+            max_items: "Maximale Einträge",
+            show_counts: "Anzahlen anzeigen",
+            show_distance: "Entfernung anzeigen",
+            show_status: "Status anzeigen",
+            show_dates: "Zeiträume anzeigen",
+            show_footer: "Fußzeile anzeigen",
+            show_icon: "Symbole anzeigen",
+            compact: "Kompakte Darstellung",
+            accent_color: "Akzentfarbe",
+            current_color: "Farbe aktuell",
+            planned_color: "Farbe geplant",
+            current_background: "Hintergrund aktuell",
+            planned_background: "Hintergrund geplant",
+            card_background: "Kartenhintergrund",
+            divider_color: "Trennlinien",
+            secondary_text_color: "Sekundärtext",
+          };
+
+          return labels[schema.name];
+        },
+        computeHelper: (schema) => {
+          const helpers = {
+            entity:
+              "Wähle den Comuro-Sensor „Route durch Baustellen beeinträchtigt“.",
+            title: "Überschreibt den automatisch ermittelten Routennamen.",
+            icon: "Wähle ein Symbol aus dem Home-Assistant-Icon-Picker.",
+            default_filter:
+              "Bestimmt, welche Baustellen beim Öffnen der Karte zuerst angezeigt werden.",
+            max_items:
+              "0 zeigt alle Treffer; sonst wird die Anzeige auf die Anzahl begrenzt.",
+            accent_color:
+              "HEX, RGB(A), HSL(A) oder eine Home-Assistant-CSS-Variable.",
+            current_color:
+              "Farbe für aktuell aktive Baustellen.",
+            planned_color:
+              "Farbe für geplante Baustellen.",
+            current_background:
+              "Hintergrundfarbe für aktuell aktive Baustellen.",
+            planned_background:
+              "Hintergrundfarbe für geplante Baustellen.",
+            card_background:
+              "Hintergrund der gesamten Karte.",
+            divider_color:
+              "Farbe der Trennlinien zwischen Baustellen.",
+            secondary_text_color:
+              "Farbe für Zusatzinformationen und Metadaten.",
+          };
+
+          return helpers[schema.name];
+        },
+        assertConfig: (config) => {
+          if (
+            !config.entity ||
+            typeof config.entity !== "string"
+          ) {
+            throw new Error("Eine Comuro-Binary-Sensor-Entität ist erforderlich.");
+          }
+
+          const filters = ["all", "aktuell", "geplant"];
+          if (
+            config.default_filter !== undefined &&
+            !filters.includes(config.default_filter)
+          ) {
+            throw new Error("Ungültiger Comuro-Startfilter.");
+          }
+
+          if (
+            config.max_items !== undefined &&
+            (!Number.isFinite(Number(config.max_items)) ||
+              Number(config.max_items) < 0)
+          ) {
+            throw new Error("Die maximale Anzahl muss 0 oder größer sein.");
+          }
+        },
       };
     }
 

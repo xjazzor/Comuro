@@ -1,5 +1,7 @@
 """Dortmund Open Data provider."""
 
+# ruff: noqa: I001
+
 from __future__ import annotations
 
 import hashlib
@@ -9,7 +11,7 @@ from typing import Any
 
 import requests
 from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+import urllib3
 
 from .models import ConstructionSite
 
@@ -26,7 +28,7 @@ PLANNED_URL = (
 
 def _create_session() -> requests.Session:
     """Create an HTTP session with conservative transient-error retries."""
-    retry = Retry(
+    retry = urllib3.util.Retry(
         total=3,
         connect=3,
         read=3,

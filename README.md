@@ -15,14 +15,16 @@ type: custom:comuro-route-card
 entity: binary_sensor.<deine_route>_betroffen
 ```
 
-The card supports the Home Assistant card editor and only requires the route's **Route durch Baustellen beeinträchtigt** entity.
+The card supports Home Assistant's **visual card editor**. The configuration is grouped into **Allgemein**, **Anzeige** and **Farben & Design**. The editor provides an entity picker, Home Assistant icon picker, visual filter selection, switches, a numeric slider and native color inputs; no YAML is required for normal card configuration.
 
 Available card options include:
-- status filter buttons for all, current, and planned roadworks
+- route entity, custom title and icon
+- filter buttons for all, current and planned roadworks
 - default filter and maximum displayed items
-- optional distance, status, dates, counts, footer, icon, and compact layout
-- custom title and icon
-- custom accent, current/planned colors and backgrounds, card background, divider, and secondary text colors
+- optional distance, status, dates, counts, footer, icons and compact layout
+- accent, current/planned colors and backgrounds, card background, divider and secondary-text colors
+
+All existing YAML options remain supported. Advanced CSS color values such as rgba(...), hsla(...) and Home Assistant CSS variables can still be entered manually when needed.
 
 Example:
 
