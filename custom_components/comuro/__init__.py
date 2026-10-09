@@ -5,9 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from homeassistant.components import frontend
-from homeassistant.components.http import StaticPathConfig
-
 from .const import DOMAIN
 
 if TYPE_CHECKING:
@@ -31,6 +28,8 @@ async def async_setup(
     config: dict,
 ) -> bool:
     """Set up global Comuro HTTP and frontend resources."""
+    from homeassistant.components.http import StaticPathConfig
+
     from .api import async_setup_views
 
     await async_setup_views(hass)
@@ -53,6 +52,8 @@ async def async_setup_entry(
     entry: ConfigEntry[ComuroRuntimeData],
 ) -> bool:
     """Set up Comuro from a config entry."""
+    from homeassistant.components import frontend
+
     from .coordinator import ComuroCoordinator
     from .route_store import RouteStore
     from .runtime import ComuroRuntimeData
