@@ -564,6 +564,7 @@
 
       this._selectedRoute = route;
       this._editingRouteId = null;
+      this._renderRoutes();
       this._drawing = false;
       this._points = route.coordinates.map((point) => [
         Number(point[0]),
@@ -582,6 +583,7 @@
     _startNewRoute() {
       this._selectedRoute = null;
       this._editingRouteId = null;
+      this._renderRoutes();
       this._drawing = true;
       this._points = [];
 
@@ -606,6 +608,7 @@
 
       this._selectedRoute = route;
       this._editingRouteId = id;
+      this._renderRoutes();
       this._drawing = true;
       this._points = route.coordinates.map((point) => [
         Number(point[0]),
@@ -837,6 +840,7 @@
       this._hideEditor();
       this._updateCursor(false);
       this._redrawRoute(false);
+      this._renderRoutes();
       this._setStatus(
         selected
           ? 'Route "' + selected.name + '" ausgewählt.'
