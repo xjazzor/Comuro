@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from homeassistant.components import frontend, panel_custom
 
-from .const import DOMAIN
+from .const import DOMAIN, INTEGRATION_VERSION
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -22,7 +22,7 @@ PLATFORMS: tuple[str, ...] = (
 
 PANEL_URL = "comuro"
 PANEL_STATIC_PATH = "/comuro_static"
-PANEL_JS = f"{PANEL_STATIC_PATH}/panel.js"
+PANEL_JS = f"{PANEL_STATIC_PATH}/panel.js?v={INTEGRATION_VERSION}"
 
 
 async def async_setup(
