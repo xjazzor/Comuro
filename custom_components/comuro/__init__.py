@@ -20,7 +20,7 @@ PLATFORMS: tuple[str, ...] = (
 
 PANEL_URL = "comuro"
 PANEL_STATIC_PATH = "/comuro_static"
-PANEL_JS = f"{PANEL_STATIC_PATH}/panel.js"
+PANEL_JS = f"{PANEL_STATIC_PATH}/panel.js?v=0.2.1"
 
 
 async def async_setup(
