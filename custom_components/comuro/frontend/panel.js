@@ -349,6 +349,11 @@
     }
 
     _routeGeoJson() {
+      const computedStyle = getComputedStyle(this);
+      const routeColor =
+        computedStyle.getPropertyValue("--primary-color").trim() ||
+        "#03a9f4";
+
       return {
         type: "FeatureCollection",
         features:
@@ -357,7 +362,7 @@
                 {
                   type: "Feature",
                   properties: {
-                    color: "var(--primary-color)",
+                    color: routeColor,
                   },
                   geometry: {
                     type: "LineString",
