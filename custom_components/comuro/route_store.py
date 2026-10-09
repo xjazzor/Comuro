@@ -123,17 +123,43 @@ class RouteStore:
     async def async_delete(self, route_id: str) -> bool:
         """Delete and persist an existing route."""
         async with self._lock:
-            original_length = len(self._routes)
+            original_routes = deepcopy(self._routes)
             self._routes = [
                 route
                 for route in self._routes
                 if route.get("id") != route_id
             ]
 
-            if len(self._routes) == original_length:
+            if len(self._routes) == len(original_routes):
                 return False
 
             await self._async_save_locked()
+
+            # Home Assistant's Store handles write errors internally. Reload
+            # the just-saved data so a failed disk write cannot silently look
+            # like a successful route deletion while the entity state is
+            # already being removed from the coordinator.
+            stored = await self._store.async_load()
+            if not isinstance(stored, dict):
+                self._routes = original_routes
+                raise RuntimeError(
+                    "Comuro route deletion could not be persisted."
+                )
+
+            persisted_routes = stored.get("routes", [])
+            if not isinstance(persisted_routes, list) or any(
+                isinstance(route, dict) and route.get("id") == route_id
+                for route in persisted_routes
+            ):
+                self._routes = [
+                    deepcopy(route)
+                    for route in persisted_routes
+                    if isinstance(route, dict)
+                ]
+                raise RuntimeError(
+                    "Comuro route deletion could not be persisted."
+                )
+
             return True
 
     @staticmethod
