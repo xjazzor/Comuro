@@ -155,7 +155,8 @@
                             label: "Geplant",
                           },
                         ],
-                        mode: "dropdown",
+                        mode: "box",
+                        box_max_columns: 3,
                       },
                     },
                   },
@@ -237,49 +238,65 @@
                   {
                     name: "accent_color",
                     selector: {
-                      text: {},
+                      text: {
+                        type: "color",
+                      },
                     },
                   },
                   {
                     name: "current_color",
                     selector: {
-                      text: {},
+                      text: {
+                        type: "color",
+                      },
                     },
                   },
                   {
                     name: "planned_color",
                     selector: {
-                      text: {},
+                      text: {
+                        type: "color",
+                      },
                     },
                   },
                   {
                     name: "current_background",
                     selector: {
-                      text: {},
+                      text: {
+                        type: "color",
+                      },
                     },
                   },
                   {
                     name: "planned_background",
                     selector: {
-                      text: {},
+                      text: {
+                        type: "color",
+                      },
                     },
                   },
                   {
                     name: "card_background",
                     selector: {
-                      text: {},
+                      text: {
+                        type: "color",
+                      },
                     },
                   },
                   {
                     name: "divider_color",
                     selector: {
-                      text: {},
+                      text: {
+                        type: "color",
+                      },
                     },
                   },
                   {
                     name: "secondary_text_color",
                     selector: {
-                      text: {},
+                      text: {
+                        type: "color",
+                      },
                     },
                   },
                 ],
