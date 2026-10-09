@@ -10,7 +10,6 @@ from homeassistant.components.http import HomeAssistantView, KEY_HASS
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
-from .route_store import RouteStore
 from .runtime import ComuroRuntimeData
 
 MAX_BUFFER_METERS = 500
