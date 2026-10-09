@@ -142,7 +142,7 @@ class RouteStore:
             stored = await self._store.async_load()
             if not isinstance(stored, dict):
                 self._routes = original_routes
-                raise RuntimeError(
+                raise TypeError(
                     "Comuro route deletion could not be persisted."
                 )
 
