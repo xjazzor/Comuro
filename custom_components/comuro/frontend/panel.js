@@ -416,10 +416,39 @@
         meta.textContent =
           "Puffer " +
           Number(route.buffer_m ?? 30) +
-          " m · " +
-          (route.enabled === false ? "inaktiv" : "aktiv");
+          " m";
 
-        body.append(name, meta);
+        const statusRow = document.createElement("label");
+        statusRow.className = "route-toggle";
+
+        const toggle = document.createElement("input");
+        toggle.type = "checkbox";
+        toggle.checked = route.enabled !== false;
+        toggle.setAttribute(
+          "aria-label",
+          route.enabled === false
+            ? 'Route "' + route.name + '" aktivieren'
+            : 'Route "' + route.name + '" deaktivieren'
+        );
+        toggle.addEventListener(
+          "change",
+          () => {
+            toggle.disabled = true;
+            void this._setRouteEnabled(route, toggle.checked).finally(() => {
+              toggle.disabled = false;
+              toggle.checked =
+                this._routes.find((item) => item.id === route.id)
+                  ?.enabled !== false;
+            });
+          }
+        );
+
+        const toggleText = document.createElement("span");
+        toggleText.textContent =
+          route.enabled === false ? "Inaktiv" : "Aktiv";
+
+        statusRow.append(toggle, toggleText);
+        body.append(name, meta, statusRow);
         main.append(dot, body);
 
         const actions = document.createElement("div");
@@ -599,6 +628,47 @@
       this._setStatus('Bearbeitung von "' + route.name + '".');
     }
 
+    async _setRouteEnabled(route, enabled) {
+      if (!this._hass?.callApi) {
+        this._setStatus("Home Assistant API ist noch nicht verfügbar.");
+        return;
+      }
+
+      try {
+        const updated = await this._hass.callApi(
+          "PUT",
+          API_BASE + "/routes/" + encodeURIComponent(route.id),
+          {
+            name: route.name,
+            coordinates: route.coordinates,
+            buffer_m: Number(route.buffer_m ?? 30),
+            enabled,
+          }
+        );
+
+        const index = this._routes.findIndex(
+          (item) => item.id === route.id
+        );
+        if (index >= 0) {
+          this._routes[index] = updated;
+        }
+
+        if (this._selectedRoute?.id === route.id) {
+          this._selectedRoute = updated;
+        }
+
+        this._renderRoutes();
+        this._setStatus(
+          'Route "' + updated.name + '"' +
+            (enabled ? " aktiviert." : " deaktiviert.")
+        );
+      } catch (error) {
+        this._setStatus(
+          error?.message || "Routenstatus konnte nicht geändert werden."
+        );
+      }
+    }
+
     async _saveRoute() {
       if (this._points.length < 2) {
         this._setStatus("Bitte mindestens zwei Punkte setzen.");
@@ -615,7 +685,11 @@
         this.querySelector("#buffer").value
       );
       const enabled =
-        this.querySelector("#enabled").checked;
+        this._editingRouteId
+          ? this._routes.find(
+              (item) => item.id === this._editingRouteId
+            )?.enabled !== false
+          : true;
 
       if (
         !Number.isInteger(buffer) ||
@@ -786,7 +860,10 @@
         "💾 " + saveLabel;
       this.querySelector("#routeName").value = name;
       this.querySelector("#buffer").value = buffer;
-      this.querySelector("#enabled").checked = enabled;
+      const enabledInput = this.querySelector("#enabled");
+      if (enabledInput) {
+        enabledInput.checked = enabled;
+      }
     }
 
     _hideEditor() {
@@ -929,6 +1006,54 @@
             line-height: 1.4;
           }
 
+          .route-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 7px;
+            color: var(--secondary-text-color);
+            font-size: 12px;
+            cursor: pointer;
+          }
+
+          .route-toggle input {
+            appearance: none;
+            width: 34px;
+            height: 20px;
+            margin: 0;
+            border-radius: 999px;
+            background: var(--disabled-text-color);
+            position: relative;
+            cursor: pointer;
+            transition: background 120ms ease;
+          }
+
+          .route-toggle input::after {
+            content: "";
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            top: 3px;
+            left: 3px;
+            border-radius: 50%;
+            background: var(--primary-background-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+            transition: transform 120ms ease;
+          }
+
+          .route-toggle input:checked {
+            background: var(--primary-color);
+          }
+
+          .route-toggle input:checked::after {
+            transform: translateX(14px);
+          }
+
+          .route-toggle input:disabled {
+            opacity: 0.55;
+            cursor: wait;
+          }
+
           .actions {
             display: flex;
             flex-wrap: wrap;
@@ -1020,13 +1145,6 @@
           input:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 1px var(--primary-color);
-          }
-
-          .check {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
           }
 
           .hint,
@@ -1138,13 +1256,6 @@
                   max="500"
                   step="1"
                 >
-              </div>
-
-              <div class="field">
-                <label class="check">
-                  <input id="enabled" type="checkbox" checked>
-                  <span>Route aktiv</span>
-                </label>
               </div>
 
               <div id="editingNotice" class="notice" hidden>
