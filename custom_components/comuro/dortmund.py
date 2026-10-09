@@ -8,8 +8,7 @@ from datetime import date
 from typing import Any
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter, Retry
 
 from .models import ConstructionSite
 
