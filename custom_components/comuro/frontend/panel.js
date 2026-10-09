@@ -1,8 +1,8 @@
 (() => {
   const PANEL_TAG = "comuro-panel";
   const API_BASE = "comuro";
-  const MAPLIBRE_JS =
-    "https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.js";
+  const MAPLIBRE_MODULE =
+    "https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.mjs";
   const MAPLIBRE_CSS =
     "https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.css";
   const LIGHT_STYLE = "/static/map/light.json";
@@ -22,22 +22,6 @@
       link.onload = resolve;
       link.onerror = reject;
       document.head.appendChild(link);
-    });
-  }
-
-  function loadScript(src, globalName) {
-    if (globalName && window[globalName]) {
-      return Promise.resolve(window[globalName]);
-    }
-
-    return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = src;
-      script.dataset.comuroSrc = src;
-      script.onload = () =>
-        resolve(globalName ? window[globalName] : undefined);
-      script.onerror = reject;
-      document.head.appendChild(script);
     });
   }
 
@@ -230,13 +214,14 @@
     async _init() {
       try {
         await this._waitForHass();
-        await Promise.all([
-          loadStyle(MAPLIBRE_CSS),
-          loadScript(MAPLIBRE_JS, "maplibregl"),
-        ]);
+        await loadStyle(MAPLIBRE_CSS);
         await this._getMapTilesToken();
 
-        this._maplibre = window.maplibregl;
+        // MapLibre GL JS v6 is ESM-only. Use the browser's native dynamic
+        // import instead of a classic <script>, which can be served with the
+        // wrong MIME type by proxies/CDNs and is no longer supported by v6.
+        const maplibreModule = await import(MAPLIBRE_MODULE);
+        this._maplibre = maplibreModule;
         const style = await this._loadMapStyle();
 
         this._map = new this._maplibre.Map({
@@ -558,7 +543,10 @@
 
       this._hideEditor();
       this._updateCursor(false);
-      this._redrawRoute(true);
+      this._redrawRoute(false);
+      requestAnimationFrame(() => {
+        this._fitRoute();
+      });
       this._setStatus('Route "' + route.name + '" ausgewählt.');
     }
 
@@ -604,7 +592,10 @@
       );
 
       this._updateCursor(true);
-      this._redrawRoute(true);
+      this._redrawRoute(false);
+      requestAnimationFrame(() => {
+        this._fitRoute();
+      });
       this._setStatus('Bearbeitung von "' + route.name + '".');
     }
 
