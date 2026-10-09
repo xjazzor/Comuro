@@ -27,8 +27,12 @@ async def async_setup_entry(
     """Set up Comuro sensors."""
     data: ComuroConfigEntry = entry  # type: ignore[assignment]
     coordinator = data.runtime_data.coordinator
+    route_store = data.runtime_data.route_store
 
-    known_routes: set[str] = set(coordinator.data)
+    known_routes: set[str] = {
+        route.id
+        for route in route_store.get_routes()
+    }
     entities_by_route: dict[str, list[ComuroRouteCountSensor]] = {}
 
     async def remove_entities(
@@ -51,7 +55,10 @@ async def async_setup_entry(
 
     @callback
     def sync_routes() -> None:
-        current_ids = set(coordinator.data)
+        current_ids = {
+            route.id
+            for route in route_store.get_routes()
+        }
         removed_ids = known_routes - current_ids
         new_ids = current_ids - known_routes
 
