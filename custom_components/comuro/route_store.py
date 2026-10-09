@@ -24,6 +24,7 @@ class RouteStore:
     """Persist and manage Comuro route definitions."""
 
     def __init__(self, hass: HomeAssistant) -> None:
+        self._hass = hass
         self._store = Store[dict[str, Any]](
             hass,
             STORE_VERSION,
@@ -41,9 +42,6 @@ class RouteStore:
             self._routes = routes
             if routes:
                 await self._async_save_locked()
-                return
-
-            self._routes = []
             return
 
         raw_routes = stored.get("routes", [])
@@ -188,10 +186,10 @@ class RouteStore:
             return []
 
         try:
-            payload = await self._store.hass.async_add_executor_job(
+            payload = await self._hass.async_add_executor_job(
                 self._read_legacy_file
             )
-        except OSError:
+        except (OSError, json.JSONDecodeError):
             return []
 
         if isinstance(payload, dict):
