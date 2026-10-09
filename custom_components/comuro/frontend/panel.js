@@ -1,6 +1,6 @@
 (() => {
   const PANEL_TAG = "comuro-panel";
-  const API_BASE = "/api/comuro";
+  const API_BASE = "api/comuro";
 
   async function ensureHomeAssistantMap() {
     if (customElements.get("ha-map")) {
@@ -105,7 +105,7 @@
 
         this._map.paths = [];
         this._map.editableLocations = [];
-        this._map.autoFit = true;
+        this._map.autoFit = false;
         this._map.clickable = true;
         this._map.themeMode = "auto";
         this._map.zoom = 12;
@@ -173,7 +173,8 @@
           :host {
             display: block;
             width: 100%;
-            height: 100%;
+            height: 100dvh !important;
+            min-height: 100dvh;
             overflow: hidden;
             color: var(--primary-text-color);
             background: var(--primary-background-color);
@@ -505,7 +506,6 @@
           <main class="map-wrap">
             <ha-map
               id="map"
-              auto-fit
               clickable
               theme-mode="auto"
             ></ha-map>
