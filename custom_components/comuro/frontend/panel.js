@@ -75,6 +75,7 @@
 
       this._initialized = true;
       this._render();
+      this._applyHostSizing();
       this._init();
     }
 
@@ -550,6 +551,27 @@
       );
     }
 
+    _applyHostSizing() {
+      const elements = [
+        this,
+        this.closest("ha-panel-custom"),
+        this.closest("partial-panel-resolver"),
+      ];
+
+      for (const element of elements) {
+        if (!element) {
+          continue;
+        }
+
+        element.style.display = "block";
+        element.style.width = "100%";
+        element.style.height = "100%";
+        element.style.minHeight = "0";
+        element.style.boxSizing = "border-box";
+        element.style.overflow = "hidden";
+      }
+    }
+
     _renderRoutes() {
       const container = this.querySelector("#routeList");
       const count = this.querySelector("#routeCount");
@@ -706,6 +728,10 @@
         return;
       }
 
+      const currentView = !autoFit
+        ? this._map.getView?.()
+        : undefined;
+
       const pathPoints = this._points.map((point) => ({
         point: [point[1], point[0]],
         timestamp: new Date(),
@@ -729,11 +755,20 @@
             color: "var(--primary-color)",
             locationEditable: true,
             activatable: false,
+            fit: false,
           }))
         : [];
 
       if (autoFit) {
         this._fitMapToRoute();
+      } else if (currentView) {
+        // Updating editableLocations can trigger HA map initialization/refits
+        // while the map engine is settling. Restore the user's exact view so
+        // adding a point never changes the zoom or center.
+        this._map.setView(
+          [currentView.center[0], currentView.center[1]],
+          currentView.zoom
+        );
       }
 
       this._updateEditingNotice();
