@@ -7,13 +7,23 @@
       return;
     }
 
-    if (typeof window.loadCardHelpers !== "function") {
+    let helpers;
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if (typeof window.loadCardHelpers === "function") {
+        helpers = await window.loadCardHelpers();
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    if (!helpers) {
       throw new Error(
-        "Die Home-Assistant-Kartenkomponenten sind noch nicht verfügbar."
+        "Die Home-Assistant-Kartenkomponenten konnten nicht geladen werden."
       );
     }
 
-    const helpers = await window.loadCardHelpers();
+    // The map card is lazy-loaded by Home Assistant. Creating it here forces
+    // the current frontend to load the same map component used by Lovelace.
     helpers.createCardElement({ type: "map" });
 
     await Promise.race([
@@ -26,7 +36,7 @@
                 "Die Home-Assistant-Standardkarte konnte nicht geladen werden."
               )
             ),
-          5000
+          10000
         )
       ),
     ]);
@@ -138,7 +148,7 @@
 
       const [latitude, longitude] = event.detail.location;
       this._points.push([longitude, latitude]);
-      this._updateMap();
+      this._updateMap(false);
     };
 
     _handleLocationMoved = (event) => {
@@ -396,6 +406,14 @@
             margin: var(--ha-space-4, 16px) var(--ha-space-1, 4px);
           }
 
+          comuro-panel {
+            display: block !important;
+            width: 100%;
+            height: 100dvh !important;
+            min-height: 100dvh;
+            overflow: hidden;
+          }
+
           .map-wrap {
             position: relative;
             min-width: 0;
@@ -508,6 +526,7 @@
               id="map"
               clickable
               theme-mode="auto"
+              zoom="12"
             ></ha-map>
           </main>
         </div>
