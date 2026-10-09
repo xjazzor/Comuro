@@ -123,7 +123,7 @@ class ComuroRouteAffectedBinarySensor(
         self._attr_unique_id = (
             f"{route_id}_affected"
         )
-        self._attr_name = "Betroffen"
+        self._attr_name = "Route durch Baustellen beeinträchtigt"
         self._attr_icon = "mdi:road-variant"
 
     @property
