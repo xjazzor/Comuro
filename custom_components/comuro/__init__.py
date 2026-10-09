@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from homeassistant.components import frontend, panel_custom
-
 from .const import DOMAIN, INTEGRATION_VERSION
 
 if TYPE_CHECKING:
@@ -31,6 +29,7 @@ async def async_setup(
     config: dict,
 ) -> bool:
     """Set up global Comuro frontend resources."""
+    from homeassistant.components import frontend, panel_custom
     from homeassistant.components.http import StaticPathConfig
 
     from .api import async_setup_views

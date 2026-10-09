@@ -6,7 +6,7 @@ from http import HTTPStatus
 from typing import Any
 
 from aiohttp import web
-from homeassistant.components.http import HomeAssistantView, KEY_HASS
+from homeassistant.components.http import KEY_HASS, HomeAssistantView
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN

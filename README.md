@@ -15,7 +15,29 @@ type: custom:comuro-route-card
 entity: binary_sensor.<deine_route>_betroffen
 ```
 
-The card supports the Home Assistant card editor and only requires the route's **Betroffen** entity.
+The card supports the Home Assistant card editor and only requires the route's **Route durch Baustellen beeinträchtigt** entity.
+
+Available card options include:
+- status filter buttons for all, current, and planned roadworks
+- default filter and maximum displayed items
+- optional distance, status, dates, counts, footer, icon, and compact layout
+- custom title and icon
+- custom accent, current/planned colors and backgrounds, card background, divider, and secondary text colors
+
+Example:
+
+```yaml
+type: custom:comuro-route-card
+entity: binary_sensor.comuro_arbeitsweg_betroffen
+show_filter: true
+default_filter: aktuell
+show_distance: true
+show_dates: false
+compact: true
+accent_color: "#03a9f4"
+current_color: "#e53935"
+planned_color: "#f9a825"
+```
 
 ## Install with HACS
 

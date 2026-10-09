@@ -5,13 +5,13 @@
     "@xjazzor"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/xjazzor/Comuro",
-  "integration_type": "hub",
   "dependencies": [
     "http",
     "panel_custom",
     "websocket_api"
   ],
+  "documentation": "https://github.com/xjazzor/Comuro",
+  "integration_type": "hub",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/xjazzor/Comuro/issues",
   "requirements": [
@@ -19,5 +19,5 @@
     "shapely>=2.1"
   ],
   "single_config_entry": true,
-  "version": "0.3.7"
+  "version": "0.3.8"
 }
