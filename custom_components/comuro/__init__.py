@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from homeassistant.components import panel_custom
+from homeassistant.components import frontend, panel_custom
 
 from .const import DOMAIN
 
@@ -47,7 +47,7 @@ async def async_setup(
         ]
     )
 
-    if not panel_custom.async_panel_exists(hass, PANEL_URL):
+    if not frontend.async_panel_exists(hass, PANEL_URL):
         await panel_custom.async_register_panel(
             hass=hass,
             webcomponent_name="comuro-panel",
