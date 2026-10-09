@@ -121,3 +121,18 @@ def test_fallback_construction_id_is_stable_when_end_date_changes():
     assert first_site is not None
     assert second_site is not None
     assert first_site.construction_id == second_site.construction_id
+
+def test_default_session_retries_transient_http_errors():
+    provider = DortmundProvider()
+
+    adapter = provider.session.get_adapter("https://example.test")
+    retry = adapter.max_retries
+
+    assert retry.total == 3
+    assert retry.status == 3
+    assert retry.connect == 3
+    assert retry.read == 3
+    assert retry.backoff_max == 30
+    assert 503 in retry.status_forcelist
+    assert 429 in retry.status_forcelist
+    assert retry.allowed_methods == frozenset({"GET"})

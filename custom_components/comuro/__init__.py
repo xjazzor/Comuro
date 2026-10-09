@@ -79,19 +79,26 @@ async def async_setup_entry(
     coordinator = ComuroCoordinator(
         hass,
         route_store,
+        config_entry=entry,
     )
-
-    await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = ComuroRuntimeData(
         coordinator=coordinator,
         route_store=route_store,
     )
 
+    # Create the route entities before the first network request. This keeps
+    # the route devices visible even when Dortmund Open Data is temporarily
+    # unavailable during Home Assistant startup.
     await hass.config_entries.async_forward_entry_setups(
         entry,
         PLATFORMS,
     )
+
+    # A temporary provider failure must not prevent the integration and its
+    # entities from being set up. The coordinator will mark entities
+    # unavailable and retry according to its configured backoff.
+    await coordinator.async_refresh()
 
     return True
 

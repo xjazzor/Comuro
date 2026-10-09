@@ -8,8 +8,11 @@ from datetime import date
 from typing import Any
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from .models import ConstructionSite
+
 
 CURRENT_URL = (
     "https://open-data.dortmund.de/api/explore/v2.1/catalog/"
@@ -21,6 +24,27 @@ PLANNED_URL = (
 )
 
 
+def _create_session() -> requests.Session:
+    """Create an HTTP session with conservative transient-error retries."""
+    retry = Retry(
+        total=3,
+        connect=3,
+        read=3,
+        status=3,
+        backoff_factor=1,
+        backoff_max=30,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset({"GET"}),
+        respect_retry_after_header=True,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+
+    session = requests.Session()
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+
+
 class DortmundProvider:
     """Fetch and normalize Dortmund roadworks."""
 
@@ -30,7 +54,7 @@ class DortmundProvider:
         page_size: int = 100,
         timeout: float = 30.0,
     ) -> None:
-        self.session = session or requests.Session()
+        self.session = session or _create_session()
         self.page_size = page_size
         self.timeout = timeout
 
@@ -218,8 +242,6 @@ class DortmundProvider:
             return None
 
         try:
-            return date.fromisoformat(
-                str(value).strip()[:10]
-            )
+            return date.fromisoformat(str(value))
         except ValueError:
             return None

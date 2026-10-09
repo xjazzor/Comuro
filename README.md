@@ -73,7 +73,7 @@ Routes are now stored by Comuro in Home Assistant persistent storage. The old `/
 
 The route panel communicates directly with the Comuro integration through Home Assistant HTTP endpoints. No separate FastAPI service, Uvicorn process or add-on is required.
 
-The panel is registered by the integration and is administrator-only. Route changes are applied immediately against the cached Dortmund snapshot, so changing a route does not trigger another Dortmund network request.
+The panel is registered by the integration and is administrator-only. Route changes are applied immediately against the cached Dortmund snapshot, so changing a route does not trigger another Dortmund network request. Route entities are created from the locally stored route configuration even when the Dortmund provider is temporarily unavailable.
 
 ## Architecture
 
