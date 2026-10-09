@@ -9,7 +9,6 @@ from typing import Any
 
 import requests
 from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 from .models import ConstructionSite
 
@@ -26,6 +25,8 @@ PLANNED_URL = (
 
 def _create_session() -> requests.Session:
     """Create an HTTP session with conservative transient-error retries."""
+    from urllib3.util.retry import Retry
+
     retry = Retry(
         total=3,
         connect=3,
