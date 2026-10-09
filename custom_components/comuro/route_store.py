@@ -156,7 +156,7 @@ class RouteStore:
                     for route in persisted_routes
                     if isinstance(route, dict)
                 ]
-                raise RuntimeError(
+                raise TypeError(
                     "Comuro route deletion could not be persisted."
                 )
 
