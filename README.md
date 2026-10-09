@@ -178,12 +178,13 @@ The GitHub Actions pipeline validates the Python test suite, Ruff, Home Assistan
 
 The integration currently uses:
 
-- a 60-minute `DataUpdateCoordinator`
+- a 60-minute `DataUpdateCoordinator` with a 60-second retry after transient update failures
 - Home Assistant persistent storage for construction lifecycle state
 - Home Assistant persistent storage for routes
 - a native administrator-only Comuro sidebar panel
 - a native Lovelace Comuro Route card, automatically registered by the integration
 - dynamic per-route entities for current/planned construction counts and current route impact
+- the initial coordinator refresh runs before route entities subscribe, avoiding a startup update race
 
 ## Data source
 
