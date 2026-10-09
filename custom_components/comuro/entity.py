@@ -32,9 +32,12 @@ class ComuroRouteEntity(
 
         self.route_id = route_id
 
-        self._attr_device_info = {
+    @property
+    def device_info(self) -> dict:
+        """Return the route device information."""
+        return {
             "identifiers": {
-                (DOMAIN, route_id),
+                (DOMAIN, self.route_id),
             },
             "name": self._route_name(),
             "manufacturer": "Comuro",
@@ -45,17 +48,22 @@ class ComuroRouteEntity(
         """Return the current state for this route."""
         return self.coordinator.data.get(
             self.route_id
-        )
+        ) if self.coordinator.data is not None else None
 
     @property
     def available(self) -> bool:
-        """Return whether the configured route is currently available."""
-        return self.route_state() is not None
+        """Return whether the route currently has valid coordinator data."""
+        return (
+            super().available
+            and self.route_state() is not None
+        )
 
     def _route_name(self) -> str:
-        state = self.coordinator.data.get(
-            self.route_id
-        )
+        for route in self.coordinator.route_store.get_routes():
+            if route.id == self.route_id:
+                return route.name
+
+        state = self.route_state()
         if state:
             return state.route.name
 
