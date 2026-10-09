@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
@@ -18,6 +19,7 @@ from .const import (
     TRACKER_STORE_KEY,
     TRACKER_STORE_VERSION,
     UPDATE_INTERVAL,
+    UPDATE_RETRY_INTERVAL,
 )
 from .dortmund import DortmundProvider
 from .geo import match_route
@@ -70,12 +72,14 @@ class ComuroCoordinator(
         hass: HomeAssistant,
         route_store: RouteStore,
         *,
+        config_entry: ConfigEntry | None = None,
         provider: DortmundProvider | None = None,
     ) -> None:
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
+            config_entry=config_entry,
             update_interval=UPDATE_INTERVAL,
         )
 
@@ -100,17 +104,40 @@ class ComuroCoordinator(
         self._sites: list[ConstructionSite] = []
 
     async def _async_setup(self) -> None:
-        """Load persistent lifecycle state before first refresh."""
+        """Load persistent lifecycle state before the first refresh."""
         stored = await self.tracker_store.async_load()
 
-        if stored:
+        if not stored:
+            return
+
+        if not isinstance(stored, dict):
+            _LOGGER.warning(
+                "Ignoring invalid Comuro tracker storage"
+            )
+            return
+
+        try:
             self.tracker = ConstructionTracker.from_dict(stored)
+        except (KeyError, TypeError, ValueError) as err:
+            _LOGGER.warning(
+                "Ignoring invalid Comuro tracker storage: %s",
+                err,
+            )
 
     async def async_reload_routes(self) -> None:
         """Re-evaluate routes against the cached construction snapshot."""
         routes = await self.hass.async_add_executor_job(
             self.route_store.get_routes
         )
+
+        # Route configuration is local state and can change even while the
+        # Dortmund provider is unavailable. Notify the platform listeners so
+        # newly created or removed routes are reflected immediately, but do
+        # not turn an unsuccessful provider refresh into a successful update.
+        if self.data is None or not self.last_update_success:
+            self.async_update_listeners()
+            return
+
         evaluated = await self.hass.async_add_executor_job(
             self._match_routes,
             routes,
@@ -121,35 +148,49 @@ class ComuroCoordinator(
     async def _async_update_data(
         self,
     ) -> dict[str, RouteState]:
-        """Fetch the hourly snapshot and evaluate all routes."""
+        """Fetch the latest snapshot and evaluate all routes."""
         try:
             sites = await self.hass.async_add_executor_job(
                 self.provider.fetch_snapshot
-            )
-
-            self._sites = sites
-
-            self.events = self.tracker.process_snapshot(
-                sites
-            )
-
-            await self.tracker_store.async_save(
-                self.tracker.to_dict()
             )
 
             routes = await self.hass.async_add_executor_job(
                 self.route_store.get_routes
             )
 
-            return await self.hass.async_add_executor_job(
+            evaluated = await self.hass.async_add_executor_job(
                 self._match_routes,
                 routes,
                 sites,
             )
 
+            self.events = self.tracker.process_snapshot(
+                sites
+            )
+
+            try:
+                await self.tracker_store.async_save(
+                    self.tracker.to_dict()
+                )
+            except Exception as err:  # noqa: BLE001
+                # Lifecycle persistence is useful but must not make the
+                # current route state unavailable when the tracker storage
+                # has a transient write problem.
+                _LOGGER.warning(
+                    "Could not persist Comuro tracker state: %s",
+                    err,
+                )
+
+            # Only replace the cached provider snapshot after the complete
+            # fetch and route evaluation succeeded.
+            self._sites = sites
+
+            return evaluated
+
         except Exception as err:
             raise UpdateFailed(
-                f"Comuro update failed: {err}"
+                f"Comuro update failed: {err}",
+                retry_after=UPDATE_RETRY_INTERVAL.total_seconds(),
             ) from err
 
     @staticmethod
