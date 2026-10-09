@@ -54,6 +54,10 @@
       this._drawing = false;
       this._points = [];
       this._editingAvailable = true;
+      this._lastMapView = {
+        center: [51.5136, 7.4653],
+        zoom: 12,
+      };
       this._initialized = false;
     }
 
@@ -729,7 +733,7 @@
       }
 
       const currentView = !autoFit
-        ? this._map.getView?.()
+        ? (this._map.getView?.() || this._lastMapView)
         : undefined;
 
       const pathPoints = this._points.map((point) => ({
@@ -764,7 +768,13 @@
       } else if (currentView) {
         // Updating editableLocations can trigger HA map initialization/refits
         // while the map engine is settling. Restore the user's exact view so
-        // adding a point never changes the zoom or center.
+        // adding a point never changes the zoom or center. setView() also
+        // creates HA's pending view when the engine is not ready yet, which
+        // takes precedence over the default initial fit.
+        this._lastMapView = {
+          center: [currentView.center[0], currentView.center[1]],
+          zoom: currentView.zoom,
+        };
         this._map.setView(
           [currentView.center[0], currentView.center[1]],
           currentView.zoom
