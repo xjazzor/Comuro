@@ -1,53 +1,35 @@
 (() => {
   const PANEL_TAG = "comuro-panel";
   const API_BASE = "/api/comuro";
-  const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
-  function loadStyle(href) {
-    if (document.querySelector('link[data-comuro-href="' + href + '"]')) {
-      return Promise.resolve();
+  async function ensureHomeAssistantMap() {
+    if (customElements.get("ha-map")) {
+      return;
     }
 
-    return new Promise((resolve, reject) => {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = href;
-      link.dataset.comuroHref = href;
-      link.onload = resolve;
-      link.onerror = reject;
-      document.head.appendChild(link);
-    });
-  }
-
-  function loadScript(src, globalName) {
-    if (globalName && window[globalName]) {
-      return Promise.resolve(window[globalName]);
+    if (typeof window.loadCardHelpers !== "function") {
+      throw new Error(
+        "Die Home-Assistant-Kartenkomponenten sind noch nicht verfügbar."
+      );
     }
 
-    const existing = document.querySelector(
-      'script[data-comuro-src="' + src + '"]'
-    );
+    const helpers = await window.loadCardHelpers();
+    helpers.createCardElement({ type: "map" });
 
-    if (existing) {
-      return new Promise((resolve, reject) => {
-        existing.addEventListener(
-          "load",
-          () => resolve(globalName ? window[globalName] : undefined),
-          { once: true }
-        );
-        existing.addEventListener("error", reject, { once: true });
-      });
-    }
-
-    return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = src;
-      script.dataset.comuroSrc = src;
-      script.onload = () =>
-        resolve(globalName ? window[globalName] : undefined);
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
+    await Promise.race([
+      customElements.whenDefined("ha-map"),
+      new Promise((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                "Die Home-Assistant-Standardkarte konnte nicht geladen werden."
+              )
+            ),
+          5000
+        )
+      ),
+    ]);
   }
 
   class ComuroPanel extends HTMLElement {
@@ -56,13 +38,12 @@
 
       this._hass = null;
       this._map = null;
-      this._mapReady = false;
-      this._mapResizeObserver = null;
       this._routes = [];
       this._selectedRoute = null;
       this._editingRouteId = null;
       this._drawing = false;
       this._points = [];
+      this._editingAvailable = true;
       this._initialized = false;
     }
 
@@ -72,9 +53,6 @@
 
     set narrow(value) {
       this._narrow = value;
-      if (this._map) {
-        window.setTimeout(() => this._map.resize(), 0);
-      }
     }
 
     connectedCallback() {
@@ -88,147 +66,53 @@
     }
 
     disconnectedCallback() {
-      this._mapResizeObserver?.disconnect();
-      this._mapResizeObserver = null;
-      this._map?.remove();
+      this._map?.removeEventListener(
+        "map-clicked",
+        this._handleMapClick
+      );
+      this._map?.removeEventListener(
+        "editable-location-moved",
+        this._handleLocationMoved
+      );
+      this._map?.removeEventListener(
+        "editing-available-changed",
+        this._handleEditingAvailability
+      );
       this._map = null;
-      this._mapReady = false;
     }
 
     async _init() {
       try {
-        await Promise.all([
-          loadStyle(
-            "https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css"
-          ),
-          loadScript(
-            "https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js",
-            "maplibregl"
-          ),
-        ]);
+        await ensureHomeAssistantMap();
 
-        this._map = new window.maplibregl.Map({
-          container: this.querySelector("#map"),
-          style: MAP_STYLE,
-          center: [7.4653, 51.5136],
-          zoom: 12,
-          attributionControl: true,
-        });
-
-        this._map.addControl(
-          new window.maplibregl.NavigationControl(),
-          "top-right"
+        this._map = this.querySelector("#map");
+        this._map.addEventListener(
+          "map-clicked",
+          this._handleMapClick
+        );
+        this._map.addEventListener(
+          "editable-location-moved",
+          this._handleLocationMoved
+        );
+        this._map.addEventListener(
+          "editing-available-changed",
+          this._handleEditingAvailability
         );
 
-        this._map.on("load", async () => {
-          this._mapReady = true;
-          this._setupMapLayers();
+        this._map.paths = [];
+        this._map.editableLocations = [];
+        this._map.autoFit = true;
+        this._map.clickable = true;
+        this._map.themeMode = "auto";
+        this._map.zoom = 12;
 
-          this._mapResizeObserver = new ResizeObserver(() => {
-            this._map?.resize();
-          });
-          this._mapResizeObserver.observe(this.querySelector("#map"));
-
-          await this._loadRoutes();
-        });
-
-        this._map.on("click", (event) => {
-          if (!this._drawing) {
-            return;
-          }
-
-          this._points.push([
-            event.lngLat.lng,
-            event.lngLat.lat,
-          ]);
-          this._redrawRoute();
-        });
+        await this._loadRoutes();
       } catch (error) {
         this._setStatus(
-          "Die Karte konnte nicht geladen werden: " +
+          "Die Home-Assistant-Karte konnte nicht geladen werden: " +
             (error?.message || error)
         );
       }
-    }
-
-    _setupMapLayers() {
-      this._map.addSource("comuro-route", {
-        type: "geojson",
-        data: this._routeGeoJson(),
-      });
-
-      this._map.addLayer({
-        id: "comuro-route-line",
-        type: "line",
-        source: "comuro-route",
-        paint: {
-          "line-color": [
-            "case",
-            ["==", ["get", "editing"], true],
-            "#03a9f4",
-            "#5f6368",
-          ],
-          "line-width": [
-            "case",
-            ["==", ["get", "editing"], true],
-            5,
-            4,
-          ],
-          "line-opacity": 0.95,
-        },
-      });
-
-      this._map.addSource("comuro-route-points", {
-        type: "geojson",
-        data: this._pointsGeoJson(),
-      });
-
-      this._map.addLayer({
-        id: "comuro-route-points",
-        type: "circle",
-        source: "comuro-route-points",
-        paint: {
-          "circle-radius": 5,
-          "circle-color": "#03a9f4",
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 2,
-        },
-      });
-    }
-
-    _routeGeoJson() {
-      return {
-        type: "FeatureCollection",
-        features:
-          this._points.length >= 2
-            ? [
-                {
-                  type: "Feature",
-                  properties: {
-                    editing: this._drawing,
-                  },
-                  geometry: {
-                    type: "LineString",
-                    coordinates: this._points,
-                  },
-                },
-              ]
-            : [],
-      };
-    }
-
-    _pointsGeoJson() {
-      return {
-        type: "FeatureCollection",
-        features: this._points.map((coordinates, index) => ({
-          type: "Feature",
-          properties: { index: index + 1 },
-          geometry: {
-            type: "Point",
-            coordinates,
-          },
-        })),
-      };
     }
 
     async _loadRoutes() {
@@ -244,154 +128,151 @@
       this._renderRoutes();
     }
 
+    _handleMapClick = (event) => {
+      if (!this._drawing) {
+        return;
+      }
+
+      const [latitude, longitude] = event.detail.location;
+      this._points.push([longitude, latitude]);
+      this._updateMap();
+    };
+
+    _handleLocationMoved = (event) => {
+      if (!this._drawing) {
+        return;
+      }
+
+      const index = Number(
+        String(event.detail.id).replace("point-", "")
+      );
+      if (!Number.isInteger(index) || index < 0) {
+        return;
+      }
+
+      const [latitude, longitude] = event.detail.location;
+      if (!this._points[index]) {
+        return;
+      }
+
+      this._points[index] = [longitude, latitude];
+      this._updateMap(false);
+    };
+
+    _handleEditingAvailability = (event) => {
+      this._editingAvailable = event.detail.available;
+      this._updateEditingNotice();
+    };
+
     _render() {
       this.innerHTML = `
         <style>
           :host {
-            --comuro-bg:
-              var(--primary-background-color, #111);
-            --comuro-surface:
-              var(--card-background-color, var(--ha-card-background, #1c1c1c));
-            --comuro-surface-2:
-              var(--secondary-background-color, #242424);
-            --comuro-border:
-              var(--divider-color, rgba(127, 127, 127, 0.24));
-            --comuro-text:
-              var(--primary-text-color, #fff);
-            --comuro-secondary:
-              var(--secondary-text-color, #9e9e9e);
-            --comuro-primary:
-              var(--primary-color, #03a9f4);
-            --comuro-danger:
-              var(--error-color, #db4437);
             display: block;
             width: 100%;
             height: 100%;
             overflow: hidden;
-            color: var(--comuro-text);
-            background: var(--comuro-bg);
+            color: var(--primary-text-color);
+            background: var(--primary-background-color);
           }
 
           .layout {
             display: grid;
             grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+            width: 100%;
             height: 100%;
             min-height: 0;
           }
 
           .sidebar {
             z-index: 2;
-            min-width: 0;
             overflow-y: auto;
-            padding: 16px;
+            padding: var(--ha-space-4, 16px);
             box-sizing: border-box;
-            background: var(--comuro-bg);
-            border-right: 1px solid var(--comuro-border);
+            background: var(--primary-background-color);
+            border-inline-end: 1px solid var(--divider-color);
           }
 
           .header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 4px 4px 16px;
+            gap: var(--ha-space-3, 12px);
+            margin: 0 0 var(--ha-space-4, 16px);
           }
 
           .header-icon {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
             display: grid;
             place-items: center;
-            color: var(--comuro-primary);
-            background: color-mix(
-              in srgb,
-              var(--comuro-primary) 14%,
-              transparent
-            );
-            font-size: 16px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            color: var(--primary-color);
+            background: var(--secondary-background-color);
           }
 
           .header-title {
             font-size: 20px;
             font-weight: 500;
-            letter-spacing: -0.01em;
-          }
-
-          .section {
-            margin-top: 8px;
           }
 
           .section-title {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 4px;
-            color: var(--comuro-secondary);
-            font-size: 13px;
-            font-weight: 500;
+            padding: 0 var(--ha-space-1, 4px) var(--ha-space-2, 8px);
+            color: var(--secondary-text-color);
+            font-size: 14px;
           }
 
           .route-list {
             display: grid;
-            gap: 8px;
+            gap: var(--ha-space-2, 8px);
           }
 
           .route {
-            background: var(--comuro-surface);
-            border: 1px solid var(--comuro-border);
-            border-radius: 12px;
-            padding: 12px;
-            box-sizing: border-box;
-            transition: border-color 120ms ease, background 120ms ease;
-          }
-
-          .route:hover {
-            border-color: color-mix(
-              in srgb,
-              var(--comuro-primary) 45%,
-              var(--comuro-border)
-            );
+            padding: var(--ha-space-3, 12px);
+            border: 1px solid var(--divider-color);
+            border-radius: var(--ha-border-radius-md, 12px);
+            background: var(--card-background-color);
           }
 
           .route.selected {
-            border-color: var(--comuro-primary);
+            border-color: var(--primary-color);
             background: color-mix(
               in srgb,
-              var(--comuro-primary) 7%,
-              var(--comuro-surface)
+              var(--primary-color) 7%,
+              var(--card-background-color)
             );
           }
 
           .route-main {
             display: flex;
             align-items: flex-start;
-            gap: 10px;
+            gap: var(--ha-space-3, 12px);
           }
 
           .route-status {
-            flex: 0 0 auto;
             width: 8px;
             height: 8px;
+            flex: 0 0 auto;
             margin-top: 6px;
             border-radius: 50%;
-            background: var(--comuro-primary);
+            background: var(--primary-color);
           }
 
           .route-status.off {
-            background: var(--comuro-secondary);
+            background: var(--disabled-text-color);
           }
 
           .route-name {
-            flex: 1;
-            min-width: 0;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 500;
-            line-height: 1.3;
+            line-height: 1.35;
           }
 
           .route-meta {
             margin-top: 3px;
-            color: var(--comuro-secondary);
+            color: var(--secondary-text-color);
             font-size: 12px;
             line-height: 1.4;
           }
@@ -399,76 +280,74 @@
           .actions {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 10px;
+            gap: var(--ha-space-2, 8px);
+            margin-top: var(--ha-space-3, 12px);
           }
 
           button {
             min-height: 36px;
-            border: 1px solid var(--comuro-border);
-            border-radius: 10px;
-            padding: 7px 12px;
-            box-sizing: border-box;
+            padding: 0 14px;
+            border: 0;
+            border-radius: var(--ha-border-radius-pill, 18px);
             cursor: pointer;
-            color: var(--comuro-text);
-            background: var(--comuro-surface);
+            color: var(--primary-text-color);
+            background: var(--secondary-background-color);
             font: inherit;
             font-size: 13px;
           }
 
           button:hover {
-            background: var(--comuro-surface-2);
+            background: var(--divider-color);
           }
 
           button.primary {
-            border-color: var(--comuro-primary);
             color: var(--text-primary-color, #fff);
-            background: var(--comuro-primary);
-          }
-
-          button.primary:hover {
-            filter: brightness(1.06);
+            background: var(--primary-color);
           }
 
           button.danger {
-            border-color: color-mix(
-              in srgb,
-              var(--comuro-danger) 35%,
-              var(--comuro-border)
-            );
-            color: var(--comuro-danger);
+            color: var(--error-color);
           }
 
-          .empty {
-            padding: 16px 12px;
-            border: 1px dashed var(--comuro-border);
-            border-radius: 12px;
-            color: var(--comuro-secondary);
+          .empty,
+          .notice {
+            padding: var(--ha-space-3, 12px);
+            border-radius: var(--ha-border-radius-md, 12px);
+            color: var(--secondary-text-color);
             font-size: 13px;
           }
 
+          .empty {
+            border: 1px dashed var(--divider-color);
+          }
+
+          .notice {
+            margin-top: var(--ha-space-3, 12px);
+            background: var(--secondary-background-color);
+          }
+
           .editor {
-            margin-top: 16px;
-            padding: 14px;
-            border: 1px solid var(--comuro-border);
-            border-radius: 12px;
-            background: var(--comuro-surface);
+            margin-top: var(--ha-space-4, 16px);
+            padding: var(--ha-space-4, 16px);
+            border: 1px solid var(--divider-color);
+            border-radius: var(--ha-border-radius-md, 12px);
+            background: var(--card-background-color);
           }
 
           .editor-title {
-            margin-bottom: 12px;
+            margin-bottom: var(--ha-space-3, 12px);
             font-size: 15px;
             font-weight: 500;
           }
 
           .field {
-            margin: 12px 0;
+            margin: var(--ha-space-3, 12px) 0;
           }
 
           .field-label {
             display: block;
             margin-bottom: 5px;
-            color: var(--comuro-secondary);
+            color: var(--secondary-text-color);
             font-size: 12px;
           }
 
@@ -478,17 +357,17 @@
             min-height: 40px;
             box-sizing: border-box;
             padding: 8px 10px;
-            border: 1px solid var(--comuro-border);
-            border-radius: 10px;
+            border: 1px solid var(--divider-color);
+            border-radius: var(--ha-border-radius-md, 12px);
             outline: none;
-            color: var(--comuro-text);
-            background: var(--comuro-surface-2);
+            color: var(--primary-text-color);
+            background: var(--primary-background-color);
             font: inherit;
           }
 
           input:focus {
-            border-color: var(--comuro-primary);
-            box-shadow: 0 0 0 1px var(--comuro-primary);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 1px var(--primary-color);
           }
 
           .check {
@@ -500,26 +379,28 @@
 
           .hint,
           .status {
-            color: var(--comuro-secondary);
+            color: var(--secondary-text-color);
             font-size: 12px;
             line-height: 1.45;
           }
 
           .hint {
-            margin: 12px 0 0;
+            margin: var(--ha-space-3, 12px) 0 0;
           }
 
           .status {
-            margin: 16px 4px 4px;
+            margin: var(--ha-space-4, 16px) var(--ha-space-1, 4px);
           }
 
           .map-wrap {
             min-width: 0;
             min-height: 0;
             position: relative;
+            background: var(--primary-background-color);
           }
 
-          #map {
+          ha-map {
+            display: block;
             width: 100%;
             height: 100%;
           }
@@ -532,8 +413,8 @@
 
             .sidebar {
               max-height: 52vh;
-              border-right: 0;
-              border-bottom: 1px solid var(--comuro-border);
+              border-inline-end: 0;
+              border-bottom: 1px solid var(--divider-color);
             }
           }
         </style>
@@ -541,22 +422,21 @@
         <div class="layout">
           <aside class="sidebar">
             <div class="header">
-              <div class="header-icon">⌘</div>
+              <div class="header-icon">⌖</div>
               <div class="header-title">Comuro</div>
             </div>
 
-            <div class="section">
-              <div class="section-title">
-                <span>Routen</span>
-                <span id="routeCount"></span>
-              </div>
-              <div id="routeList" class="route-list"></div>
+            <div class="section-title">
+              <span>Routen</span>
+              <span id="routeCount"></span>
+            </div>
 
-              <div class="actions">
-                <button id="newRoute" class="primary">
-                  ＋ Neue Route
-                </button>
-              </div>
+            <div id="routeList" class="route-list"></div>
+
+            <div class="actions">
+              <button id="newRoute" class="primary">
+                ＋ Neue Route
+              </button>
             </div>
 
             <div id="editor" class="editor" hidden>
@@ -595,6 +475,8 @@
                 </label>
               </div>
 
+              <div id="editingNotice" class="notice" hidden></div>
+
               <div class="actions">
                 <button id="save" class="primary">Speichern</button>
                 <button id="undo">↩ Punkt zurück</button>
@@ -602,9 +484,8 @@
               </div>
 
               <p class="hint">
-                Klicke im Zeichenmodus Punkt für Punkt entlang der Strecke.
-                Beim Bearbeiten kannst du Verlauf, Name, Puffer und Aktivität
-                ändern.
+                Im Zeichenmodus kannst du Punkte auf der Karte setzen.
+                Beim Bearbeiten lassen sich die vorhandenen Punkte verschieben.
               </p>
             </div>
 
@@ -614,7 +495,12 @@
           </aside>
 
           <main class="map-wrap">
-            <div id="map"></div>
+            <ha-map
+              id="map"
+              auto-fit
+              clickable
+              theme-mode="auto"
+            ></ha-map>
           </main>
         </div>
       `;
@@ -640,8 +526,8 @@
     _renderRoutes() {
       const container = this.querySelector("#routeList");
       const count = this.querySelector("#routeCount");
-      container.innerHTML = "";
 
+      container.innerHTML = "";
       count.textContent = this._routes.length
         ? String(this._routes.length)
         : "";
@@ -728,15 +614,15 @@
       this._editingRouteId = null;
       this._drawing = false;
       this._points = route.coordinates.map((point) => [
-        point[0],
-        point[1],
+        Number(point[0]),
+        Number(point[1]),
       ]);
 
-      this._redrawRoute();
       this._hideEditor();
-      this._fitRoute();
-      this._renderRoutes();
       this._setCursor(false);
+      this._updateMap();
+      this._renderRoutes();
+      this._fitMapToRoute();
       this._setStatus('Route "' + route.name + '" ausgewählt.');
     }
 
@@ -746,7 +632,6 @@
       this._drawing = true;
       this._points = [];
 
-      this._redrawRoute();
       this._showEditor(
         "Route zeichnen",
         "Speichern",
@@ -755,6 +640,7 @@
         true
       );
       this._setCursor(true);
+      this._updateMap();
       this._renderRoutes();
       this._setStatus("Zeichenmodus aktiv.");
     }
@@ -769,8 +655,8 @@
       this._editingRouteId = id;
       this._drawing = true;
       this._points = route.coordinates.map((point) => [
-        point[0],
-        point[1],
+        Number(point[0]),
+        Number(point[1]),
       ]);
 
       this._showEditor(
@@ -781,11 +667,117 @@
         route.enabled !== false
       );
 
-      this._redrawRoute();
       this._setCursor(true);
-      this._fitRoute();
+      this._updateMap();
       this._renderRoutes();
+      this._fitMapToRoute();
       this._setStatus('Bearbeitung von "' + route.name + '".');
+    }
+
+    _updateMap(autoFit = true) {
+      if (!this._map) {
+        return;
+      }
+
+      const pathPoints = this._points.map((point) => ({
+        point: [point[1], point[0]],
+        timestamp: new Date(),
+      }));
+
+      this._map.paths = this._points.length >= 2
+        ? [
+            {
+              points: pathPoints,
+              name: this._selectedRoute?.name ?? "Neue Route",
+              color: "var(--primary-color)",
+            },
+          ]
+        : [];
+
+      this._map.editableLocations = this._drawing
+        ? this._points.map((point, index) => ({
+            id: "point-" + index,
+            location: [point[1], point[0]],
+            title: "Punkt " + (index + 1),
+            color: "var(--primary-color)",
+            locationEditable: true,
+            activatable: false,
+          }))
+        : [];
+
+      if (autoFit) {
+        this._fitMapToRoute();
+      }
+
+      this._updateEditingNotice();
+    }
+
+    _fitMapToRoute() {
+      if (!this._map || this._points.length < 1) {
+        return;
+      }
+
+      if (this._points.length >= 2) {
+        this._map.fitMap?.({
+          padding: {
+            top: 40,
+            right: 40,
+            bottom: 40,
+            left: 40,
+          },
+        });
+      }
+    }
+
+    _showEditor(
+      title,
+      saveLabel,
+      name,
+      buffer,
+      enabled
+    ) {
+      const editor = this.querySelector("#editor");
+      editor.hidden = false;
+
+      this.querySelector("#editorTitle").textContent = title;
+      this.querySelector("#save").textContent =
+        "💾 " + saveLabel;
+      this.querySelector("#routeName").value = name;
+      this.querySelector("#buffer").value = buffer;
+      this.querySelector("#enabled").checked = enabled;
+      this._updateEditingNotice();
+    }
+
+    _hideEditor() {
+      this.querySelector("#editor").hidden = true;
+      this._updateEditingNotice();
+    }
+
+    _updateEditingNotice() {
+      const notice = this.querySelector("#editingNotice");
+      if (!notice || !this._drawing) {
+        if (notice) {
+          notice.hidden = true;
+        }
+        return;
+      }
+
+      if (this._editingRouteId && !this._editingAvailable) {
+        notice.hidden = false;
+        notice.textContent =
+          "Diese Home-Assistant-Karte unterstützt auf diesem Gerät nur die " +
+          "Anzeige. Die Routenpunkte sind hier nicht verschiebbar.";
+        return;
+      }
+
+      notice.hidden = true;
+    }
+
+    _setCursor(drawing) {
+      this._map?.style.setProperty(
+        "--ha-map-clickable-cursor",
+        drawing ? "crosshair" : ""
+      );
     }
 
     async _saveRoute() {
@@ -800,10 +792,16 @@
         return;
       }
 
-      const buffer = Number(this.querySelector("#buffer").value);
+      const buffer = Number(
+        this.querySelector("#buffer").value
+      );
       const enabled = this.querySelector("#enabled").checked;
 
-      if (!Number.isInteger(buffer) || buffer < 0 || buffer > 500) {
+      if (
+        !Number.isInteger(buffer) ||
+        buffer < 0 ||
+        buffer > 500
+      ) {
         this._setStatus(
           "Der Puffer muss zwischen 0 und 500 Metern liegen."
         );
@@ -834,7 +832,9 @@
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
+        const error = await response
+          .json()
+          .catch(() => ({}));
         this._setStatus(
           error.message ||
             "Route konnte nicht gespeichert werden."
@@ -859,16 +859,17 @@
       this._editingRouteId = null;
       this._drawing = false;
       this._points = route.coordinates.map((point) => [
-        point[0],
-        point[1],
+        Number(point[0]),
+        Number(point[1]),
       ]);
 
       this._hideEditor();
-      this._setCursor(false);
       this._renderRoutes();
-      this._redrawRoute();
-      this._fitRoute();
-      this._setStatus('Route "' + route.name + '" gespeichert.');
+      this._updateMap();
+      this._setCursor(false);
+      this._setStatus(
+        'Route "' + route.name + '" gespeichert.'
+      );
     }
 
     async _deleteRoute(id) {
@@ -909,7 +910,7 @@
         this._editingRouteId = null;
         this._drawing = false;
         this._points = [];
-        this._redrawRoute();
+        this._updateMap();
         this._hideEditor();
         this._setCursor(false);
       }
@@ -924,7 +925,7 @@
       }
 
       this._points.pop();
-      this._redrawRoute();
+      this._updateMap(false);
     }
 
     _cancelEdit() {
@@ -934,89 +935,25 @@
       this._editingRouteId = null;
 
       if (selected) {
-        this._points = selected.coordinates.map((point) => [
-          point[0],
-          point[1],
-        ]);
+        this._points = selected.coordinates.map(
+          (point) => [
+            Number(point[0]),
+            Number(point[1]),
+          ]
+        );
       } else {
         this._points = [];
       }
 
       this._hideEditor();
       this._setCursor(false);
-      this._redrawRoute();
+      this._updateMap();
       this._setStatus(
         selected
           ? 'Route "' + selected.name + '" ausgewählt.'
           : "Bearbeitung abgebrochen."
       );
       this._renderRoutes();
-    }
-
-    _showEditor(
-      title,
-      saveLabel,
-      name,
-      buffer,
-      enabled
-    ) {
-      const editor = this.querySelector("#editor");
-      editor.hidden = false;
-
-      this.querySelector("#editorTitle").textContent = title;
-      this.querySelector("#save").textContent =
-        "💾 " + saveLabel;
-      this.querySelector("#routeName").value = name;
-      this.querySelector("#buffer").value = buffer;
-      this.querySelector("#enabled").checked = enabled;
-    }
-
-    _hideEditor() {
-      this.querySelector("#editor").hidden = true;
-    }
-
-    _redrawRoute() {
-      if (!this._mapReady) {
-        return;
-      }
-
-      this._map.getSource("comuro-route")?.setData(
-        this._routeGeoJson()
-      );
-      this._map.getSource("comuro-route-points")?.setData(
-        this._pointsGeoJson()
-      );
-    }
-
-    _removeRouteLine() {
-      this._points = [];
-      this._redrawRoute();
-    }
-
-    _fitRoute() {
-      if (!this._map || this._points.length < 2) {
-        return;
-      }
-
-      const bounds = new window.maplibregl.LngLatBounds();
-      for (const point of this._points) {
-        bounds.extend(point);
-      }
-
-      this._map.fitBounds(bounds, {
-        padding: 70,
-        duration: 700,
-        maxZoom: 16,
-      });
-    }
-
-    _setCursor(drawing) {
-      if (!this._map) {
-        return;
-      }
-
-      this._map.getCanvas().style.cursor =
-        drawing ? "crosshair" : "";
     }
 
     _setStatus(message) {
