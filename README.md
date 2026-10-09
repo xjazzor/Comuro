@@ -1,16 +1,12 @@
 # Comuro
 
-Comuro is a Home Assistant project for monitoring saved routes and detecting current and planned roadworks that affect them.
+Comuro is a Home Assistant integration for monitoring saved routes and detecting current and planned roadworks that affect them.
 
-The first data source is the official Open Data service of the City of Dortmund. The long-term goal is a clean separation between the Home Assistant integration (data, tracking, matching and entities) and a separate Home Assistant app/add-on for creating and managing routes.
+The route editor is now part of Comuro itself. There is no separate route-editor add-on anymore.
 
 ## Install with HACS
 
-Comuro is packaged as a Home Assistant **integration** and can be installed through HACS as a custom repository during development.
-
-> **Important:** HACS requires repositories to be public on GitHub. The Comuro repository is currently private, so make it public before trying the HACS installation.
-
-### Custom repository
+Comuro is packaged as a Home Assistant integration and can be installed through HACS as a custom repository during development.
 
 In Home Assistant:
 
@@ -19,47 +15,54 @@ In Home Assistant:
 3. Select **Custom repositories**.
 4. Add `https://github.com/xjazzor/Comuro`.
 5. Select **Integration**.
-6. Add the repository.
-7. Search for **Comuro** in HACS and install it.
-8. Restart Home Assistant.
-9. Go to **Settings → Devices & services → Add Integration** and select **Comuro**.
+6. Install **Comuro**.
+7. Restart Home Assistant.
+8. Go to **Settings → Devices & services → Add Integration** and select **Comuro**.
 
 For a convenient one-click link:
 
 https://my.home-assistant.io/redirect/hacs_repository/?owner=xjazzor&repository=Comuro&category=integration
 
-HACS uses `hacs.json` for repository metadata, while the integration itself is discovered from `custom_components/comuro/manifest.json`.
+## Route management
+
+After Comuro is configured, an administrator gets a **Comuro** entry in the Home Assistant sidebar.
+
+The native route panel provides:
+
+- creating routes on an interactive map
+- editing route names
+- editing the warning buffer in meters
+- enabling or disabling routes
+- changing the route geometry
+- deleting routes
+
+Routes are now stored by Comuro in Home Assistant persistent storage. The old `/share/comuro/routes.json` file is imported automatically once when native storage does not exist. The legacy file is not deleted during migration.
+
+The route panel communicates directly with the Comuro integration through Home Assistant HTTP endpoints. No separate FastAPI service, Uvicorn process or add-on is required.
 
 ## Architecture
 
 ```text
-                    Home Assistant
-                         │
-              ┌──────────┴──────────┐
-              │                     │
-              ▼                     ▼
-     Comuro integration      Comuro Route Editor
-              │                app/add-on
-              │                     │
-              │              /share/comuro/
-              │                routes.json
-              │                     │
-              └──────────┬──────────┘
-                         │
-                  route definitions
-                         │
-                         ▼
-                 Dortmund Open Data
-                         │
-                         ▼
-                 geospatial matching
-                         │
-                         ▼
-                 route-specific state
-                         │
-                         ▼
-                  HA entities/events
+                         Home Assistant
+                              │
+                 ┌────────────┴────────────┐
+                 │                         │
+                 ▼                         ▼
+          Comuro integration        Native Comuro panel
+                 │                         │
+        ┌────────┼────────┐                │
+        │        │        │                │
+        ▼        ▼        ▼                │
+    Dortmund   Tracker   Entities ◄────────┘
+        │
+        ▼
+  Geospatial matching
+        │
+        ▼
+   Route-specific state
 ```
+
+The panel is registered by the integration and is administrator-only. Route changes are applied immediately against the cached Dortmund snapshot, so changing a route does not trigger another Dortmund network request.
 
 ## Current design decisions
 
@@ -74,7 +77,7 @@ HACS uses `hacs.json` for repository metadata, while the integration itself is d
 - Matches are ordered from the start of the route.
 - The visual distinction is intentionally limited to current vs. planned construction.
 - The integration does not expose separate next-construction sensors.
-- Route editing and visualization belong to the separate route-editor app/add-on.
+- Route management is part of the integration and no longer requires a separate add-on.
 
 ## Repository structure
 
@@ -85,19 +88,20 @@ Comuro/
 │       ├── __init__.py
 │       ├── manifest.json
 │       ├── config_flow.py
-│       ├── const.py
-│       ├── runtime.py
 │       ├── coordinator.py
+│       ├── route_store.py
+│       ├── api.py
+│       ├── runtime.py
 │       ├── entity.py
-│       ├── models.py
 │       ├── dortmund.py
 │       ├── geo.py
 │       ├── tracker.py
 │       ├── sensor.py
 │       ├── binary_sensor.py
+│       ├── frontend/
+│       │   └── panel.js
 │       ├── strings.json
 │       └── translations/
-├── comuro_route_editor/
 ├── contracts/
 ├── tests/
 ├── .github/
@@ -105,11 +109,9 @@ Comuro/
 │       ├── ci.yml
 │       └── hacs.yml
 ├── hacs.json
-├── repository.yaml
 ├── requirements-dev.txt
 ├── pyproject.toml
-├── LICENSE
-└── .gitignore
+└── LICENSE
 ```
 
 ## Development
@@ -138,16 +140,13 @@ The GitHub Actions pipeline validates the Python test suite, Ruff, Home Assistan
 
 ## Home Assistant integration
 
-The integration is currently in active development and is not yet a finished release.
+The integration currently uses:
 
-The initial integration uses:
-
-- a 60-minute DataUpdateCoordinator
+- a 60-minute `DataUpdateCoordinator`
 - Home Assistant persistent storage for construction lifecycle state
-- routes read from `/share/comuro/routes.json`
+- Home Assistant persistent storage for routes
+- a native administrator-only Comuro sidebar panel
 - dynamic per-route entities for current/planned construction counts and current route impact
-
-The route editor app will become the owner of `routes.json`.
 
 ## Data source
 
