@@ -103,7 +103,7 @@ class ComuroCoordinator(
         self.events: list[ConstructionEvent] = []
         self._sites: list[ConstructionSite] = []
 
-    async def _async_setup(self) -> None:
+    async def async_initialize(self) -> None:
         """Load persistent lifecycle state before the first refresh."""
         stored = await self.tracker_store.async_load()
 
@@ -130,12 +130,11 @@ class ComuroCoordinator(
             self.route_store.get_routes
         )
 
-        # Route configuration is local state and can change even while the
-        # Dortmund provider is unavailable. Notify the platform listeners so
-        # newly created or removed routes are reflected immediately, but do
-        # not turn an unsuccessful provider refresh into a successful update.
+        # A route change should also recover Comuro if there is no valid
+        # provider snapshot yet. This is particularly useful immediately
+        # after startup when the first Dortmund request is still failing.
         if self.data is None or not self.last_update_success:
-            self.async_update_listeners()
+            await self.async_refresh()
             return
 
         evaluated = await self.hass.async_add_executor_job(

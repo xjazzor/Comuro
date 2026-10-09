@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import Final
 
 DOMAIN: Final[str] = "comuro"
-INTEGRATION_VERSION: Final[str] = "0.3.10"
+INTEGRATION_VERSION: Final[str] = "0.3.11"
 
 UPDATE_INTERVAL: Final = timedelta(hours=1)
 UPDATE_RETRY_INTERVAL: Final = timedelta(seconds=60)

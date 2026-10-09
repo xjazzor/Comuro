@@ -87,18 +87,25 @@ async def async_setup_entry(
         route_store=route_store,
     )
 
-    # Create the route entities before the first network request. This keeps
-    # the route devices visible even when Dortmund Open Data is temporarily
-    # unavailable during Home Assistant startup.
+    # Initialize persistent lifecycle state before the first refresh. The
+    # regular async_refresh path deliberately does not call a coordinator
+    # setup hook.
+    await coordinator.async_initialize()
+
+    # Fetch once before platforms subscribe. This avoids a startup race where
+    # the first successful coordinator update could happen before route
+    # entities have registered their listeners.
+    #
+    # A temporary provider failure does not abort setup; entities subscribe to
+    # the coordinator afterward and retries continue in the background.
+    await coordinator.async_refresh()
+
+    # Forward platforms only after the initial refresh so newly created
+    # CoordinatorEntity instances can immediately use coordinator.data.
     await hass.config_entries.async_forward_entry_setups(
         entry,
         PLATFORMS,
     )
-
-    # A temporary provider failure must not prevent the integration and its
-    # entities from being set up. The coordinator will mark entities
-    # unavailable and retry according to its configured backoff.
-    await coordinator.async_refresh()
 
     return True
 
