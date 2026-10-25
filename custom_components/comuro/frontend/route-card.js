@@ -1083,9 +1083,25 @@
     }
   }
 
-  if (document.readyState === "complete") {
+  function ensureCardRegistered() {
     registerCard();
+
+    // Home Assistant 2026.x may replace window.customElements when its
+    // scoped-registry polyfill initializes. A definition made before that
+    // replacement disappears from the registry visible to Lovelace.
+    // Re-check after the page has settled and re-register when necessary.
+    [0, 250, 750, 1500, 3000, 5000].forEach((delay) => {
+      window.setTimeout(() => {
+        if (!customElements.get(TAG)) {
+          registerCard();
+        }
+      }, delay);
+    });
+  }
+
+  if (document.readyState === "complete") {
+    ensureCardRegistered();
   } else {
-    window.addEventListener("load", registerCard, { once: true });
+    window.addEventListener("load", ensureCardRegistered, { once: true });
   }
 })();
